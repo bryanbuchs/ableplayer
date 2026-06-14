@@ -21,7 +21,7 @@ declare class AblePlayer {
     media: any;
     autoplay: boolean;
     okToPlay: boolean;
-    loop: boolean;
+    loop: any;
     playsInline: string;
     hasPoster: boolean;
     audioPoster: any;
@@ -46,7 +46,7 @@ declare class AblePlayer {
     transcriptSrc: any;
     lyricsMode: boolean;
     transcriptTitle: any;
-    $signDivLocation: any;
+    signDivLocation: HTMLElement;
     defaultCaptionsPosition: string;
     chaptersDivLocation: any;
     chaptersTitle: any;
@@ -80,7 +80,7 @@ declare class AblePlayer {
     hideControlsOriginal: boolean;
     stenoMode: boolean;
     stenoFrameId: any;
-    $stenoFrame: any;
+    stenoFrame: HTMLElement;
     ableIndex: number;
     title: any;
     tt: {};

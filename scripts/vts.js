@@ -3,17 +3,16 @@
  * so they appear in the proper sequence within an auto-generated interactive transcript
 */
 
-import $ from 'jquery';
-
 function addVtsFunctions(AblePlayer) {
 	AblePlayer.prototype.injectVTS = function() {
 
-		var thisObj, $heading, $instructions, $p1, $p2, $ul, $li1, $li2, $li3,
-		$fieldset, $legend, i, $radioDiv, radioId, $label, $radio, $saveButton, $savedTable;
+		var thisObj, heading, instructions, p1, p2, ul, li1, li2, li3,
+		fieldset, legend, i, radioDiv, radioId, label, radio, saveButton, savedTable;
 
 		thisObj = this;
 
-		if ( null !== document.getElementById( 'able-vts' ) ) {
+		var ableVts = document.getElementById( 'able-vts' );
+		if ( null !== ableVts ) {
 			// Are they qualifying tracks?
 			if (this.vtsTracks.length) {
 				// Build an array of unique languages
@@ -24,76 +23,79 @@ function addVtsFunctions(AblePlayer) {
 				this.vtsLang = this.lang;
 
 				// Inject a heading
-				let heading = this.translate( 'vtsHeading', 'Video Transcript Sorter' );
-				$heading = $('<h2>').text( heading ); // TODO: intelligently assign proper heading level
-				$('#able-vts').append($heading);
+				let headingText = this.translate( 'vtsHeading', 'Video Transcript Sorter' );
+				heading = this.createEl('h2', { text: headingText }); // TODO: intelligently assign proper heading level
+				ableVts.append(heading);
 
 				// Inject an empty div for writing messages
-				this.$vtsAlert = $('<div>',{
+				this.vtsAlert = this.createEl('div', {
 					'id': 'able-vts-alert',
 					'aria-live': 'polite',
 					'aria-atomic': 'true'
-				})
-				$('#able-vts').append(this.$vtsAlert);
+				});
+				ableVts.append(this.vtsAlert);
 
 				// Inject instructions (TODO: Localize)
-				$instructions = $('<div>',{
+				instructions = this.createEl('div', {
 					'id': 'able-vts-instructions'
 				});
-				$p1 = $('<p>').text( this.translate( 'vtsInstructions1', 'Use the Video Transcript Sorter to modify text tracks:' ) );
-				$ul = $('<ul>');
-				$li1 = $('<li>').text( this.translate( 'vtsInstructions2', 'Reorder chapters, descriptions, captions, and/or subtitles so they appear in the proper sequence in Able Player\'s auto-generated transcript.' ) );
-				$li2 = $('<li>').text( this.translate( 'vtsInstructions3', 'Modify content or start/end times (all are directly editable within the table).' ) );
-				$li3 = $('<li>').text( this.translate( 'vtsInstructions4', 'Add new content, such as chapters or descriptions.' ) );
-				$p2 = $('<p>').text( this.translate( 'vtsInstructions5', 'After editing, click the "Save Changes" button to generate new content for all relevant timed text files. The new text can be copied and pasted into new WebVTT files.' ) );
-				$ul.append($li1,$li2,$li3);
-				$instructions.append($p1,$ul,$p2);
-				$('#able-vts').append($instructions);
+				p1 = this.createEl('p', { text: this.translate( 'vtsInstructions1', 'Use the Video Transcript Sorter to modify text tracks:' ) });
+				ul = this.createEl('ul');
+				li1 = this.createEl('li', { text: this.translate( 'vtsInstructions2', 'Reorder chapters, descriptions, captions, and/or subtitles so they appear in the proper sequence in Able Player\'s auto-generated transcript.' ) });
+				li2 = this.createEl('li', { text: this.translate( 'vtsInstructions3', 'Modify content or start/end times (all are directly editable within the table).' ) });
+				li3 = this.createEl('li', { text: this.translate( 'vtsInstructions4', 'Add new content, such as chapters or descriptions.' ) });
+				p2 = this.createEl('p', { text: this.translate( 'vtsInstructions5', 'After editing, click the "Save Changes" button to generate new content for all relevant timed text files. The new text can be copied and pasted into new WebVTT files.' ) });
+				ul.append(li1,li2,li3);
+				instructions.append(p1,ul,p2);
+				ableVts.append(instructions);
 
 				// Inject a fieldset with radio buttons for each language
-				$fieldset = $('<fieldset>');
-				$legend = $('<legend>').text( this.translate( 'vtsSelectLanguage', 'Select a language' ) );
-				$fieldset.append($legend);
-				let $fieldWrapper = $( '<div class="vts-lang-selector"></div>' );
+				fieldset = this.createEl('fieldset');
+				legend = this.createEl('legend', { text: this.translate( 'vtsSelectLanguage', 'Select a language' ) });
+				fieldset.append(legend);
+				let fieldWrapper = this.createEl('div', { 'class': 'vts-lang-selector' });
 				for (i in this.langs) {
 					radioId = 'vts-lang-radio-' + this.langs[i];
-					$radioDiv = $('<div>',{
+					radioDiv = this.createEl('div', {
 						// uncomment the following if label is native name
 						// 'lang': this.langs[i]
 					});
-					$radio = $('<input>', {
+					radio = this.createEl('input', {
 						'type': 'radio',
 						'name': 'vts-lang',
 						'id': radioId,
 						'value': this.langs[i]
-					}).on('click',function() {
-						thisObj.vtsLang = $(this).val();
+					});
+					radio.addEventListener('click', function() {
+						thisObj.vtsLang = this.value;
 						thisObj.showVtsAlert('Loading ' + thisObj.getLanguageName(thisObj.vtsLang) + ' tracks');
 						thisObj.injectVtsTable('update',thisObj.vtsLang);
 					});
 					if (this.langs[i] == this.lang) {
 						// this is the default language.
-						$radio.prop('checked',true);
+						radio.checked = true;
 					}
-					$label = $('<label>', {
-						'for': radioId
+					label = this.createEl('label', {
+						'for': radioId,
 						// Two options for label:
 						// getLanguageName() - with second parameter "local" would return native name, otherwise returns English;
 						// TODO: if using this be sure to add lang attr to <div> (see above)
-					}).text(this.getLanguageName(this.langs[i]));
-					$radioDiv.append($radio,$label);
-					$fieldWrapper.append($radioDiv);
+						text: this.getLanguageName(this.langs[i])
+					});
+					radioDiv.append(radio,label);
+					fieldWrapper.append(radioDiv);
 				}
-				$fieldset.append( $fieldWrapper );
-				$('#able-vts').append($fieldset);
+				fieldset.append( fieldWrapper );
+				ableVts.append(fieldset);
 				let vtsSave = this.translate( 'vtsSave', 'Generate new .vtt content' );
 				// Inject a button to generate new files.
-				$saveButton = $('<button>',{
+				saveButton = this.createEl('button', {
 					'type': 'button',
 					'id': 'able-vts-save',
-					'value': 'save'
-				}).text( vtsSave );
-				$('#able-vts').append($saveButton);
+					'value': 'save',
+					text: vtsSave
+				});
+				ableVts.append(saveButton);
 
 				// Inject a table with one row for each cue in the default language
 				this.injectVtsTable('add',this.vtsLang);
@@ -102,60 +104,92 @@ function addVtsFunctions(AblePlayer) {
 				// Add event listeners for contenteditable cells
 				var kindOptions, beforeEditing, editedCell, editedContent;
 				kindOptions = ['captions','chapters','descriptions','subtitles'];
-				$('td[contenteditable="true"]').on('focus',function() {
-					beforeEditing = $(this).text();
-				}).on('blur',function() {
-					if (beforeEditing != $(this).text()) {
-						editedCell = $(this).index();
-						editedContent = $(this).text();
-						if (editedCell === 1) {
-							// do some simple spelling auto-correct
-							if ($.inArray(editedContent,kindOptions) === -1) {
-								// whatever user typed is not a valid kind
-								// assume they correctly typed the first character
-								if (editedContent.substring(0,1) === 's') {
-									$(this).text('subtitles');
-								} else if (editedContent.substring(0,1) === 'd') {
-									$(this).text('descriptions');
-								} else if (editedContent.substring(0,2) === 'ch') {
-									$(this).text('chapters');
-								} else {
-									// whatever else they types, assume 'captions'
-									$(this).text('captions');
+				var editableCells = Array.from(document.querySelectorAll('td[contenteditable="true"]'));
+				editableCells.forEach(function(cell) {
+					cell.addEventListener('focus', function() {
+						beforeEditing = this.textContent;
+					});
+					cell.addEventListener('blur', function() {
+						if (beforeEditing != this.textContent) {
+							editedCell = Array.from(this.parentElement.children).indexOf(this);
+							editedContent = this.textContent;
+							if (editedCell === 1) {
+								// do some simple spelling auto-correct
+								if (kindOptions.indexOf(editedContent) === -1) {
+									// whatever user typed is not a valid kind
+									// assume they correctly typed the first character
+									if (editedContent.substring(0,1) === 's') {
+										this.textContent = 'subtitles';
+									} else if (editedContent.substring(0,1) === 'd') {
+										this.textContent = 'descriptions';
+									} else if (editedContent.substring(0,2) === 'ch') {
+										this.textContent = 'chapters';
+									} else {
+										// whatever else they types, assume 'captions'
+										this.textContent = 'captions';
+									}
 								}
+							} else if (editedCell === 2 || editedCell === 3) {
+								// start or end time
+								// ensure proper formatting (with 3 decimal places)
+								this.textContent = thisObj.formatTimestamp(editedContent);
 							}
-						} else if (editedCell === 2 || editedCell === 3) {
-							// start or end time
-							// ensure proper formatting (with 3 decimal places)
-							$(this).text(thisObj.formatTimestamp(editedContent));
 						}
-					}
-				}).on('keydown',function(e) {
-					// don't allow keystrokes to trigger Able Player (or other) functions
-					// while user is editing
-					e.stopPropagation();
+					});
+					cell.addEventListener('keydown', function(e) {
+						// don't allow keystrokes to trigger Able Player (or other) functions
+						// while user is editing
+						e.stopPropagation();
+					});
 				});
 
 				// handle click on the Save button
-				$('#able-vts-save').on('click',function(e) {
+				document.getElementById('able-vts-save').addEventListener('click', function(e) {
 					e.stopPropagation();
-					if ($(this).attr('value') == 'save') {
+					var instructionsEl, fieldsetEl;
+					if (this.getAttribute('value') == 'save') {
 						// replace table with WebVTT output in textarea fields (for copying/pasting)
-						$(this).attr('value','cancel').text( thisObj.translate( 'vtsReturn', 'Return to Editor' ) );
-						$savedTable = $('#able-vts table');
-						$('#able-vts-instructions').hide();
-						$('#able-vts > fieldset').hide();
-						$('#able-vts table').remove();
-						$('#able-vts-icon-credit').remove();
-						thisObj.parseVtsOutput($savedTable);
+						this.setAttribute('value','cancel');
+						this.textContent = thisObj.translate( 'vtsReturn', 'Return to Editor' );
+						savedTable = document.querySelector('#able-vts table');
+						instructionsEl = document.getElementById('able-vts-instructions');
+						if (instructionsEl) {
+							instructionsEl.style.display = 'none';
+						}
+						fieldsetEl = document.querySelector('#able-vts > fieldset');
+						if (fieldsetEl) {
+							fieldsetEl.style.display = 'none';
+						}
+						var tableEl = document.querySelector('#able-vts table');
+						if (tableEl) {
+							tableEl.remove();
+						}
+						var creditEl = document.getElementById('able-vts-icon-credit');
+						if (creditEl) {
+							creditEl.remove();
+						}
+						thisObj.parseVtsOutput(savedTable);
 					} else {
 						// cancel saving, and restore the table using edited content
-						$(this).attr('value','save').text( vtsSave );
-						$('#able-vts-output').remove();
-						$('#able-vts-instructions').show();
-						$('#able-vts > fieldset').show();
-						$('#able-vts').append($savedTable);
-						$('#able-vts').append(thisObj.getIconCredit());
+						this.setAttribute('value','save');
+						this.textContent = vtsSave;
+						var outputEl = document.getElementById('able-vts-output');
+						if (outputEl) {
+							outputEl.remove();
+						}
+						instructionsEl = document.getElementById('able-vts-instructions');
+						if (instructionsEl) {
+							instructionsEl.style.display = '';
+						}
+						fieldsetEl = document.querySelector('#able-vts > fieldset');
+						if (fieldsetEl) {
+							fieldsetEl.style.display = '';
+						}
+						var ableVtsEl = document.getElementById('able-vts');
+						ableVtsEl.append(savedTable);
+						var creditDiv = document.createElement('div');
+						creditDiv.innerHTML = thisObj.getIconCredit();
+						ableVtsEl.append(creditDiv.firstChild);
 						thisObj.showVtsAlert( thisObj.translate( 'vtsCancel', 'Cancelling saving. Any edits you made have been restored in the VTS table.' ) );
 					}
 				});
@@ -286,19 +320,25 @@ function addVtsFunctions(AblePlayer) {
 
 		// action is either 'add' (for a new table) or 'update' (if user has selected a new lang)
 
-		var $table, $thead, headers, i, $tr, $th, $td, rows, rowNum, rowId;
+		var table, thead, headers, i, tr, th, td, rows, rowNum, rowId;
 
 		if (action === 'update') {
 			// remove existing table
-			$('#able-vts table').remove();
-			$('#able-vts-icon-credit').remove();
+			var existingTable = document.querySelector('#able-vts table');
+			if (existingTable) {
+				existingTable.remove();
+			}
+			var existingCredit = document.getElementById('able-vts-icon-credit');
+			if (existingCredit) {
+				existingCredit.remove();
+			}
 		}
 
-		$table = $('<table>',{
+		table = this.createEl('table', {
 			'lang': lang
 		});
-		$thead = $( '<thead>' );
-		$tr = $( '<tr>' );
+		thead = this.createEl('thead');
+		tr = this.createEl('tr');
 		headers = [
 			this.translate( 'vtsRow', 'Row' ),
 			this.translate( 'vtsKind', 'Kind' ),
@@ -308,64 +348,71 @@ function addVtsFunctions(AblePlayer) {
 			this.translate( 'vtsActions', 'Actions' )
 		];
 		for (i=0; i < headers.length; i++) {
-			$th = $('<th>', {
-				'scope': 'col'
-			}).text(headers[i]);
+			th = this.createEl('th', {
+				'scope': 'col',
+				text: headers[i]
+			});
 			if (headers[i] === 'Actions') {
-				$th.addClass('actions');
+				th.classList.add('actions');
 			}
-			$tr.append($th);
+			tr.append(th);
 		}
-		$thead.append($tr);
-		$table.append($thead);
+		thead.append(tr);
+		table.append(thead);
 
 		// Get all rows (sorted by start time), and inject them into table
 		rows = this.getAllRows(lang);
 		for (i=0; i < rows.length; i++) {
 			rowNum = i + 1;
 			rowId = 'able-vts-row-' + rowNum;
-			$tr = $('<tr>',{
+			tr = this.createEl('tr', {
 				'id': rowId,
 				'class': 'kind-' + rows[i].kind
 			});
 			// Row #
-			$td = $('<td>').text(rowNum);
-			$tr.append($td);
+			td = this.createEl('td', { text: rowNum });
+			tr.append(td);
 
 			// Kind
-			$td = $('<td>',{
-				'contenteditable': 'true'
-			}).text(rows[i].kind);
-			$tr.append($td);
+			td = this.createEl('td', {
+				'contenteditable': 'true',
+				text: rows[i].kind
+			});
+			tr.append(td);
 
 			// Start
-			$td = $('<td>',{
-				'contenteditable': 'true'
-			}).text(rows[i].start);
-			$tr.append($td);
+			td = this.createEl('td', {
+				'contenteditable': 'true',
+				text: rows[i].start
+			});
+			tr.append(td);
 
 			// End
-			$td = $('<td>',{
-				'contenteditable': 'true'
-			}).text(rows[i].end);
-			$tr.append($td);
+			td = this.createEl('td', {
+				'contenteditable': 'true',
+				text: rows[i].end
+			});
+			tr.append(td);
 
 			// Content
-			$td = $('<td>',{
-				'contenteditable': 'true'
-			}).text(rows[i].content); // TODO: Preserve tags
-			$tr.append($td);
+			td = this.createEl('td', {
+				'contenteditable': 'true',
+				text: rows[i].content
+			}); // TODO: Preserve tags
+			tr.append(td);
 
 					// Actions
-			$td = this.addVtsActionButtons(rowNum,rows.length);
-			$tr.append($td);
+			td = this.addVtsActionButtons(rowNum,rows.length);
+			tr.append(td);
 
-			$table.append($tr);
+			table.append(tr);
 		}
-		$('#able-vts').append($table);
+		document.getElementById('able-vts').append(table);
 
 		// Add credit for action button SVG icons
-		$('#able-vts').append(this.getIconCredit());
+		var creditWrapper = document.createElement('div');
+		creditWrapper.innerHTML = this.getIconCredit();
+		document.getElementById('able-vts').append(creditWrapper.firstChild);
 
 	};
 
@@ -374,23 +421,24 @@ function addVtsFunctions(AblePlayer) {
 		// rowNum is the number of the current table row (starting with 1)
 		// numRows is the total number of rows (excluding the header row)
 		// TODO: Position buttons so they're vertically aligned, even if missing an Up or Down button
-		var thisObj, $td, buttons, i, button, $button, $svg, $g, pathString, pathString2, $path, $path2;
+		var thisObj, td, buttons, i, button, buttonEl, svg, g, pathString, pathString2, path, path2, btnHtml;
 		thisObj = this;
-		$td = $('<td>');
+		td = this.createEl('td');
 		buttons = ['up','down','insert','delete'];
 
 		for (i=0; i < buttons.length; i++) {
 			button = buttons[i];
 			if (button === 'up') {
 				if (rowNum > 1) {
-					$button = $('<button>',{
+					buttonEl = this.createEl('button', {
 						'id': 'able-vts-button-up-' + rowNum,
 						'title': 'Move up',
 						'aria-label': 'Move Row ' + rowNum + ' up'
-					}).on('click', function(el) {
+					});
+					buttonEl.addEventListener('click', function(el) {
 						thisObj.onClickVtsActionButton(el.currentTarget);
 					});
-					$svg = $('<svg>',{
+					svg = this.createEl('svg', {
 						'focusable': 'false',
 						'aria-hidden': 'true',
 						'x': '0px',
@@ -403,26 +451,29 @@ function addVtsFunctions(AblePlayer) {
 					pathString = 'M249.628,176.101L138.421,52.88c-6.198-6.929-16.241-6.929-22.407,0l-0.381,0.636L4.648,176.101'
 						+ 'c-6.198,6.897-6.198,18.052,0,24.981l0.191,0.159c2.892,3.305,6.865,5.371,11.346,5.371h221.937c4.577,0,8.613-2.161,11.41-5.594'
 						+ 'l0.064,0.064C255.857,194.153,255.857,182.998,249.628,176.101z';
-					$path = $('<path>',{
+					path = this.createEl('path', {
 						'd': pathString
 					});
-					$g = $('<g>').append($path);
-					$svg.append($g);
-					$button.append($svg);
+					g = this.createEl('g');
+					g.append(path);
+					svg.append(g);
+					buttonEl.append(svg);
 					// Refresh button in the DOM in order for browser to process & display the SVG
-					$button.html($button.html());
-					$td.append($button);
+					btnHtml = buttonEl.innerHTML;
+					buttonEl.innerHTML = btnHtml;
+					td.append(buttonEl);
 				}
 			} else if (button === 'down') {
 				if (rowNum < numRows) {
-					$button = $('<button>',{
+					buttonEl = this.createEl('button', {
 						'id': 'able-vts-button-down-' + rowNum,
 						'title': 'Move down',
 						'aria-label': 'Move Row ' + rowNum + ' down'
-					}).on('click', function(el) {
+					});
+					buttonEl.addEventListener('click', function(el) {
 						thisObj.onClickVtsActionButton(el.currentTarget);
 					});
-					$svg = $('<svg>',{
+					svg = this.createEl('svg', {
 						'focusable': 'false',
 						'aria-hidden': 'true',
 						'x': '0px',
@@ -435,26 +486,29 @@ function addVtsFunctions(AblePlayer) {
 					pathString = 'M286.935,69.377c-3.614-3.617-7.898-5.424-12.848-5.424H18.274c-4.952,0-9.233,1.807-12.85,5.424'
 						+ 'C1.807,72.998,0,77.279,0,82.228c0,4.948,1.807,9.229,5.424,12.847l127.907,127.907c3.621,3.617,7.902,5.428,12.85,5.428'
 						+ 's9.233-1.811,12.847-5.428L286.935,95.074c3.613-3.617,5.427-7.898,5.427-12.847C292.362,77.279,290.548,72.998,286.935,69.377z';
-					$path = $('<path>',{
+					path = this.createEl('path', {
 						'd': pathString
 					});
-					$g = $('<g>').append($path);
-					$svg.append($g);
-					$button.append($svg);
+					g = this.createEl('g');
+					g.append(path);
+					svg.append(g);
+					buttonEl.append(svg);
 					// Refresh button in the DOM in order for browser to process & display the SVG
-					$button.html($button.html());
-					$td.append($button);
+					btnHtml = buttonEl.innerHTML;
+					buttonEl.innerHTML = btnHtml;
+					td.append(buttonEl);
 				}
 			} else if (button === 'insert') {
 				// Add Insert button to all rows
-				$button = $('<button>',{
+				buttonEl = this.createEl('button', {
 					'id': 'able-vts-button-insert-' + rowNum,
 					'title': 'Insert row below',
 					'aria-label': 'Insert row before Row ' + rowNum
-				}).on('click', function(el) {
+				});
+				buttonEl.addEventListener('click', function(el) {
 					thisObj.onClickVtsActionButton(el.currentTarget);
 				});
-				$svg = $('<svg>',{
+				svg = this.createEl('svg', {
 					'focusable': 'false',
 					'aria-hidden': 'true',
 					'x': '0px',
@@ -470,25 +524,28 @@ function addVtsFunctions(AblePlayer) {
 					+ 'c5.33,5.332,11.803,7.994,19.414,7.994h118.771V374.59c0,7.611,2.664,14.089,7.994,19.417c5.33,5.325,11.802,7.987,19.414,7.987'
 					+ 'h54.816c7.617,0,14.086-2.662,19.417-7.987c5.332-5.331,7.994-11.806,7.994-19.417V255.813h118.77'
 					+ 'c7.618,0,14.089-2.662,19.417-7.994c5.329-5.325,7.994-11.793,7.994-19.411v-54.819C401.991,165.973,399.332,159.502,394,154.175z';
-				$path = $('<path>',{
+				path = this.createEl('path', {
 					'd': pathString
 				});
-				$g = $('<g>').append($path);
-				$svg.append($g);
-				$button.append($svg);
+				g = this.createEl('g');
+				g.append(path);
+				svg.append(g);
+				buttonEl.append(svg);
 				// Refresh button in the DOM in order for browser to process & display the SVG
-				$button.html($button.html());
-				$td.append($button);
+				btnHtml = buttonEl.innerHTML;
+				buttonEl.innerHTML = btnHtml;
+				td.append(buttonEl);
 			} else if (button === 'delete') {
 				// Add Delete button to all rows
-				$button = $('<button>',{
+				buttonEl = this.createEl('button', {
 					'id': 'able-vts-button-delete-' + rowNum,
 					'title': 'Delete row ',
 					'aria-label': 'Delete Row ' + rowNum
-				}).on('click', function(el) {
+				});
+				buttonEl.addEventListener('click', function(el) {
 					thisObj.onClickVtsActionButton(el.currentTarget);
 				});
-				$svg = $('<svg>',{
+				svg = this.createEl('svg', {
 					'focusable': 'false',
 					'aria-hidden': 'true',
 					'x': '0px',
@@ -501,7 +558,7 @@ function addVtsFunctions(AblePlayer) {
 				pathString = 'M397.281,31.782h-63.565C333.716,14.239,319.478,0,301.934,0h-95.347'
 					+ 'c-17.544,0-31.782,14.239-31.782,31.782h-63.565c-17.544,0-31.782,14.239-31.782,31.782h349.607'
 					+ 'C429.063,46.021,414.825,31.782,397.281,31.782z';
-				$path = $('<path>',{
+				path = this.createEl('path', {
 					'd': pathString
 				});
 				pathString2 = 'M79.456,476.737c0,17.544,14.239,31.782,31.782,31.782h286.042'
@@ -511,35 +568,37 @@ function addVtsFunctions(AblePlayer) {
 					+ 'c0,8.74-7.151,15.891-15.891,15.891c-8.772,0-15.891-7.151-15.891-15.891V174.804z M143.021,174.804'
 					+ 'c0-8.772,7.119-15.891,15.891-15.891c8.772,0,15.891,7.119,15.891,15.891v254.26c0,8.74-7.119,15.891-15.891,15.891'
 					+ 'c-8.772,0-15.891-7.151-15.891-15.891V174.804z';
-				$path2 = $('<path>',{
+				path2 = this.createEl('path', {
 					'd': pathString2
 				});
 
-				$g = $('<g>').append($path,$path2);
-				$svg.append($g);
-				$button.append($svg);
+				g = this.createEl('g');
+				g.append(path,path2);
+				svg.append(g);
+				buttonEl.append(svg);
 				// Refresh button in the DOM in order for browser to process & display the SVG
-				$button.html($button.html());
-				$td.append($button);
+				btnHtml = buttonEl.innerHTML;
+				buttonEl.innerHTML = btnHtml;
+				td.append(buttonEl);
 			}
 		}
-		return $td;
+		return td;
 	};
 
-	AblePlayer.prototype.updateVtsActionButtons = function($buttons,nextRowNum) {
+	AblePlayer.prototype.updateVtsActionButtons = function(buttons,nextRowNum) {
 
 		// TODO: Add some filters to this function to add or delete 'Up' and 'Down' buttons
 		// if row is moved to/from the first/last rows
-		var i, $thisButton, id, label, newId, newLabel;
-		for (i=0; i < $buttons.length; i++) {
-			$thisButton = $buttons.eq(i);
-			id = $thisButton.attr('id');
-			label = $thisButton.attr('aria-label');
+		var i, thisButton, id, label, newId, newLabel;
+		for (i=0; i < buttons.length; i++) {
+			thisButton = buttons[i];
+			id = thisButton.getAttribute('id');
+			label = thisButton.getAttribute('aria-label');
 			// replace the integer (id) within each of the above strings
 			newId = id.replace(/[0-9]+/g, nextRowNum);
 			newLabel = label.replace(/[0-9]+/g, nextRowNum);
-			$thisButton.attr('id',newId);
-			$thisButton.attr('aria-label',newLabel);
+			thisButton.setAttribute('id',newId);
+			thisButton.setAttribute('aria-label',newLabel);
 		}
 	}
 
@@ -559,7 +618,7 @@ function addVtsFunctions(AblePlayer) {
 		var i;
 		for (i in tracks) {
 			if (Object.hasOwn(tracks[i], 'language')) {
-				if ($.inArray(tracks[i].language,this.langs) === -1) {
+				if (this.langs.indexOf(tracks[i].language) === -1) {
 					// this language is not already in the langs array. Add it.
 					this.langs[this.langs.length] = tracks[i].language;
 				}
@@ -602,7 +661,7 @@ function addVtsFunctions(AblePlayer) {
 
 		// handle click on up, down, insert, or delete button
 		var idParts, action, rowNum;
-		idParts = $(el).attr('id').split('-');
+		idParts = el.getAttribute('id').split('-');
 		action = idParts[3];
 		rowNum = idParts[4];
 		if (action == 'up') {
@@ -623,83 +682,86 @@ function addVtsFunctions(AblePlayer) {
 	AblePlayer.prototype.insertRow = function(rowNum) {
 
 		// Insert empty row below rowNum
-		var $table, $rows, numRows, newRowNum, newRowId, $tr, $td, $select,
-		options, i, $option, newKind, newClass, $parentRow, nextRowNum, $buttons;
+		var table, rows, numRows, newRowNum, newRowId, tr, td, select,
+		options, i, option, newKind, newClass, parentRow, nextRowNum, buttons;
 
-		$table = $('#able-vts table');
-		$rows = $table.find('tr');
+		table = document.querySelector('#able-vts table');
+		rows = Array.from(table.querySelectorAll('tr'));
 
-		numRows = $rows.length - 1; // exclude header row
+		numRows = rows.length - 1; // exclude header row
 
 		newRowNum = parseInt(rowNum) + 1;
 		newRowId = 'able-vts-row-' + newRowNum;
 
 		// Create an empty row
-		$tr = $('<tr>',{
+		tr = this.createEl('tr', {
 			'id': newRowId
 		});
 
 		// Row #
-		$td = $('<td>').text(newRowNum);
-		$tr.append($td);
+		td = this.createEl('td', { text: newRowNum });
+		tr.append(td);
 
 		// Kind (add a select field for chosing a kind)
 		newKind = null;
-		$select = $('<select>',{
+		select = this.createEl('select', {
 			'id': 'able-vts-kind-' + newRowNum,
 			'aria-label': 'What kind of track is this?',
 			'placeholder': 'Select a kind'
-		}).on('change',function() {
-			newKind = $(this).val();
+		});
+		select.addEventListener('change', function() {
+			newKind = this.value;
 			newClass = 'kind-' + newKind;
-			$parentRow = $(this).closest('tr');
+			parentRow = this.closest('tr');
 			// replace the select field with the chosen value as text
-			$(this).parent().text(newKind);
+			this.parentElement.textContent = newKind;
 			// add a class to the parent row
-			$parentRow.addClass(newClass);
+			parentRow.classList.add(newClass);
 		});
 		options = ['','captions','chapters','descriptions','subtitles'];
 		for (i=0; i<options.length; i++) {
-			$option = $('<option>',{
-				'value': options[i]
-			}).text(options[i]);
-			$select.append($option);
+			option = this.createEl('option', {
+				'value': options[i],
+				text: options[i]
+			});
+			select.append(option);
 		}
-		$td = $('<td>').append($select);
-		$tr.append($td);
+		td = this.createEl('td');
+		td.append(select);
+		tr.append(td);
 
 		// Start
-		$td = $('<td>',{
+		td = this.createEl('td', {
 			'contenteditable': 'true'
 		}); // TODO; Intelligently assign a new start time (see getAdjustedTimes())
-		$tr.append($td);
+		tr.append(td);
 
 		// End
-		$td = $('<td>',{
+		td = this.createEl('td', {
 			'contenteditable': 'true'
 		}); // TODO; Intelligently assign a new end time (see getAdjustedTimes())
-		$tr.append($td);
+		tr.append(td);
 
 		// Content
-		$td = $('<td>',{
+		td = this.createEl('td', {
 			'contenteditable': 'true'
 		});
-		$tr.append($td);
+		tr.append(td);
 
 		// Actions
-		$td = this.addVtsActionButtons(newRowNum,numRows);
-		$tr.append($td);
+		td = this.addVtsActionButtons(newRowNum,numRows);
+		tr.append(td);
 
 		// Now insert the new row
-		$table.find('tr').eq(rowNum).after($tr);
+		Array.from(table.querySelectorAll('tr'))[rowNum].after(tr);
 
 		// Update row.id, Row # cell, & action items for all rows after the inserted one
 		for (i=newRowNum; i <= numRows; i++) {
 			nextRowNum = i + 1;
-			$rows.eq(i).attr('id','able-vts-row-' + nextRowNum); // increment tr id
-			$rows.eq(i).find('td').eq(0).text(nextRowNum); // increment Row # as expressed in first td
-			$buttons = $rows.eq(i).find('button');
-			this.updateVtsActionButtons($buttons,nextRowNum);
+			rows[i].setAttribute('id','able-vts-row-' + nextRowNum); // increment tr id
+			Array.from(rows[i].querySelectorAll('td'))[0].textContent = nextRowNum; // increment Row # as expressed in first td
+			buttons = Array.from(rows[i].querySelectorAll('button'));
+			this.updateVtsActionButtons(buttons,nextRowNum);
 		}
 
 		// Auto-adjust times
@@ -710,26 +772,26 @@ function addVtsFunctions(AblePlayer) {
 		this.showVtsAlert( newAlert );
 
 		// Place focus in new select field
-		$select.trigger('focus');
+		select.focus();
 
 	};
 
 	AblePlayer.prototype.deleteRow = function(rowNum) {
 
-		var $table, $rows, numRows, i, nextRowNum, $buttons;
+		var table, rows, numRows, i, nextRowNum, buttons;
 
-		$table = $('#able-vts table');
-		$table[0].deleteRow(rowNum);
-		$rows = $table.find('tr'); // this does not include the deleted row
-		numRows = $rows.length - 1; // exclude header row
+		table = document.querySelector('#able-vts table');
+		table.deleteRow(rowNum);
+		rows = Array.from(table.querySelectorAll('tr')); // this does not include the deleted row
+		numRows = rows.length - 1; // exclude header row
 
 		// Update row.id, Row # cell, & action buttons for all rows after the deleted one
 		for (i=rowNum; i <= numRows; i++) {
 			nextRowNum = i;
-			$rows.eq(i).attr('id','able-vts-row-' + nextRowNum); // increment tr id
-			$rows.eq(i).find('td').eq(0).text(nextRowNum); // increment Row # as expressed in first td
-			$buttons = $rows.eq(i).find('button');
-			this.updateVtsActionButtons($buttons,nextRowNum);
+			rows[i].setAttribute('id','able-vts-row-' + nextRowNum); // increment tr id
+			Array.from(rows[i].querySelectorAll('td'))[0].textContent = nextRowNum; // increment Row # as expressed in first td
+			buttons = Array.from(rows[i].querySelectorAll('button'));
+			this.updateVtsActionButtons(buttons,nextRowNum);
 		}
 
 		// Announce the deletion
@@ -741,25 +803,25 @@ function addVtsFunctions(AblePlayer) {
 	AblePlayer.prototype.moveRow = function(rowNum,direction) {
 
 		// swap two rows
-		var $thisRow, otherRowNum, $otherRow, msg;
+		var thisRow, otherRowNum, otherRow, msg;
 
-		$thisRow = $('#able-vts table').find('tr').eq(rowNum);
+		thisRow = Array.from(document.querySelectorAll('#able-vts table tr'))[rowNum];
 		if (direction == 'up') {
 			otherRowNum = parseInt(rowNum) - 1;
-			$otherRow = $('#able-vts table').find('tr').eq(otherRowNum);
-			$otherRow.before($thisRow);
+			otherRow = Array.from(document.querySelectorAll('#able-vts table tr'))[otherRowNum];
+			otherRow.before(thisRow);
 		} else if (direction == 'down') {
 			otherRowNum = parseInt(rowNum) + 1;
-			$otherRow = $('#able-vts table').find('tr').eq(otherRowNum);
-			$otherRow.after($thisRow);
+			otherRow = Array.from(document.querySelectorAll('#able-vts table tr'))[otherRowNum];
+			otherRow.after(thisRow);
 		}
 		// Update row.id, Row # cell, & action buttons for the two swapped rows
-		$thisRow.attr('id','able-vts-row-' + otherRowNum);
-		$thisRow.find('td').eq(0).text(otherRowNum);
-		this.updateVtsActionButtons($thisRow.find('button'),otherRowNum);
-		$otherRow.attr('id','able-vts-row-' + rowNum);
-		$otherRow.find('td').eq(0).text(rowNum);
-		this.updateVtsActionButtons($otherRow.find('button'),rowNum);
+		thisRow.setAttribute('id','able-vts-row-' + otherRowNum);
+		Array.from(thisRow.querySelectorAll('td'))[0].textContent = otherRowNum;
+		this.updateVtsActionButtons(Array.from(thisRow.querySelectorAll('button')),otherRowNum);
+		otherRow.setAttribute('id','able-vts-row-' + rowNum);
+		Array.from(otherRow.querySelectorAll('td'))[0].textContent = rowNum;
+		this.updateVtsActionButtons(Array.from(otherRow.querySelectorAll('button')),rowNum);
 
 		// auto-adjust times
 		this.adjustTimes(otherRowNum);
@@ -786,7 +848,7 @@ function addVtsFunctions(AblePlayer) {
 
 		// TODO: Add WebVTT validation on save, since tweaking times is risky
 
-		var	 minDuration, $rows, prevRowNum, nextRowNum, $row, $prevRow, $nextRow,
+		var	 minDuration, rows, prevRowNum, nextRowNum, row, prevRow, nextRow,
 				kind, prevKind, nextKind,
 				start, prevStart, nextStart,
 				end, prevEnd, nextEnd;
@@ -798,48 +860,48 @@ function addVtsFunctions(AblePlayer) {
 		minDuration['chapters'] = .001;
 
 		// refresh rows object
-		$rows = $('#able-vts table').find('tr');
+		rows = Array.from(document.querySelectorAll('#able-vts table tr'));
 
 		// Get kind, start, and end from current row
-		$row = $rows.eq(rowNum);
+		row = rows[rowNum];
 		// row has a class that starts with "kind-"
 		// Extract kind from the class name
-		kind = ($row.is('[class^="kind-"]')) ? this.getKindFromClass($row.attr('class')) : 'captions';
+		kind = (row.matches('[class^="kind-"]')) ? this.getKindFromClass(row.getAttribute('class')) : 'captions';
 
-		start = this.getSecondsFromColonTime($row.find('td').eq(2).text());
-		end = this.getSecondsFromColonTime($row.find('td').eq(3).text());
+		start = this.getSecondsFromColonTime(Array.from(row.querySelectorAll('td'))[2].textContent);
+		end = this.getSecondsFromColonTime(Array.from(row.querySelectorAll('td'))[3].textContent);
 
 		// Get kind, start, and end from previous row
 		if (rowNum > 1) {
 			// this is not the first row. Include the previous row
 			prevRowNum = rowNum - 1;
-			$prevRow = $rows.eq(prevRowNum);
+			prevRow = rows[prevRowNum];
 			// row has a class that starts with "kind-"
 			// Extract kind from the class name
-			prevKind = ($prevRow.is('[class^="kind-"]')) ? this.getKindFromClass($prevRow.attr('class')) : null;
-			prevStart = this.getSecondsFromColonTime($prevRow.find('td').eq(2).text());
-			prevEnd = this.getSecondsFromColonTime($prevRow.find('td').eq(3).text());
+			prevKind = (prevRow.matches('[class^="kind-"]')) ? this.getKindFromClass(prevRow.getAttribute('class')) : null;
+			prevStart = this.getSecondsFromColonTime(Array.from(prevRow.querySelectorAll('td'))[2].textContent);
+			prevEnd = this.getSecondsFromColonTime(Array.from(prevRow.querySelectorAll('td'))[3].textContent);
 		} else {
 			// this is the first row
-			$prevRow = null;
+			prevRow = null;
 			prevKind = null;
 			prevStart = null;
 			prevEnd = null;
 		}
 
 		// Get kind, start, and end from next row
-		if (rowNum < ($rows.length - 1)) {
+		if (rowNum < (rows.length - 1)) {
 			// this is not the last row. Include the next row
 			nextRowNum = rowNum + 1;
-			$nextRow = $rows.eq(nextRowNum);
+			nextRow = rows[nextRowNum];
 			// row has a class that starts with "kind-"
 			// Extract kind from the class name
-			nextKind = ($nextRow.is('[class^="kind-"]')) ? this.getKindFromClass($nextRow.attr('class')) : null;
-			nextStart = this.getSecondsFromColonTime($nextRow.find('td').eq(2).text());
-			nextEnd = this.getSecondsFromColonTime($nextRow.find('td').eq(3).text());
+			nextKind = (nextRow.matches('[class^="kind-"]')) ? this.getKindFromClass(nextRow.getAttribute('class')) : null;
+			nextStart = this.getSecondsFromColonTime(Array.from(nextRow.querySelectorAll('td'))[2].textContent);
+			nextEnd = this.getSecondsFromColonTime(Array.from(nextRow.querySelectorAll('td'))[3].textContent);
 		} else {
 			// this is the last row
-			$nextRow = null;
+			nextRow = null;
 			nextKind = null;
 			nextStart = null;
 			nextEnd = null;
@@ -850,8 +912,8 @@ function addVtsFunctions(AblePlayer) {
 				// The previous row was probably inserted, and user has not yet selected a kind
 				// automatically set it to captions
 				prevKind = 'captions';
-				$prevRow.attr('class','kind-captions');
-				$prevRow.find('td').eq(1).html('captions');
+				prevRow.setAttribute('class','kind-captions');
+				Array.from(prevRow.querySelectorAll('td'))[1].innerHTML = 'captions';
 			}
 			// Current row has no start time (i.e., it's an inserted row)
 			if (prevKind === 'captions') {
@@ -913,15 +975,15 @@ function addVtsFunctions(AblePlayer) {
 		}
 
 		// Update all affected start/end times
-		$row.find('td').eq(2).text(this.formatSecondsAsColonTime(start,true));
-		$row.find('td').eq(3).text(this.formatSecondsAsColonTime(end,true));
-		if ($prevRow) {
-			$prevRow.find('td').eq(2).text(this.formatSecondsAsColonTime(prevStart,true));
-			$prevRow.find('td').eq(3).text(this.formatSecondsAsColonTime(prevEnd,true));
+		Array.from(row.querySelectorAll('td'))[2].textContent = this.formatSecondsAsColonTime(start,true);
+		Array.from(row.querySelectorAll('td'))[3].textContent = this.formatSecondsAsColonTime(end,true);
+		if (prevRow) {
+			Array.from(prevRow.querySelectorAll('td'))[2].textContent = this.formatSecondsAsColonTime(prevStart,true);
+			Array.from(prevRow.querySelectorAll('td'))[3].textContent = this.formatSecondsAsColonTime(prevEnd,true);
 		}
-		if ($nextRow) {
-			$nextRow.find('td').eq(2).text(this.formatSecondsAsColonTime(nextStart,true));
-			$nextRow.find('td').eq(3).text(this.formatSecondsAsColonTime(nextEnd,true));
+		if (nextRow) {
+			Array.from(nextRow.querySelectorAll('td'))[2].textContent = this.formatSecondsAsColonTime(nextStart,true);
+			Array.from(nextRow.querySelectorAll('td'))[3].textContent = this.formatSecondsAsColonTime(nextEnd,true);
 		}
 	};
 
@@ -950,33 +1012,36 @@ function addVtsFunctions(AblePlayer) {
 		// For now, alertDiv is fixed at top left of screen
 		// but could ultimately be modified to appear near the point of action in the VTS table
 		const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-		this.$vtsAlert.text(message).show();
+		this.vtsAlert.textContent = message;
+		this.vtsAlert.style.display = '';
 		delay(10000).then(() => {
-			this.$vtsAlert.text(message).hide()
+			this.vtsAlert.textContent = message;
+			this.vtsAlert.style.display = 'none';
 		});
 	};
 
-	AblePlayer.prototype.parseVtsOutput = function($table) {
+	AblePlayer.prototype.parseVtsOutput = function(table) {
 
 		// parse table into arrays, then into WebVTT content, for each kind
 		// Display the WebVTT content in textarea fields for users to copy and paste
-		var lang, i, kinds, kind, vtt, $rows, start, end, content, $output;
+		var lang, i, kinds, kind, vtt, rows, start, end, content, output;
 
-		lang = $table.attr('lang');
+		lang = table.getAttribute('lang');
 		kinds = ['captions','chapters','descriptions','subtitles'];
 		vtt = {};
 		for (i=0; i < kinds.length; i++) {
 			kind = kinds[i];
 			vtt[kind] = 'WEBVTT' + "\n\n";
 		}
-		$rows = $table.find('tr');
-		if ($rows.length > 0) {
-			for (i=0; i < $rows.length; i++) {
-				kind = $rows.eq(i).find('td').eq(1).text();
-				if ($.inArray(kind,kinds) !== -1) {
-					start = $rows.eq(i).find('td').eq(2).text();
-					end = $rows.eq(i).find('td').eq(3).text();
-					content = $rows.eq(i).find('td').eq(4)[0].innerText;
+		rows = Array.from(table.querySelectorAll('tr'));
+		if (rows.length > 0) {
+			for (i=0; i < rows.length; i++) {
+				var cells = Array.from(rows[i].querySelectorAll('td'));
+				kind = cells[1].textContent;
+				if (kinds.indexOf(kind) !== -1) {
+					start = cells[2].textContent;
+					end = cells[3].textContent;
+					content = cells[4].innerText;
 					if (start !== undefined && end !== undefined) {
 						vtt[kind] += start + ' --> ' + end + "\n";
 						if (content !== 'undefined') {
@@ -987,24 +1052,24 @@ function addVtsFunctions(AblePlayer) {
 				}
 			}
 		}
-		$output = $('<div>',{
+		output = this.createEl('div', {
 			'id': 'able-vts-output'
-		})
-		$('#able-vts').append($output);
+		});
+		document.getElementById('able-vts').append(output);
 		for (i=0; i < kinds.length; i++) {
 			kind = kinds[i];
 			if (vtt[kind].length > 8) {
 				// some content has been added
-				this.showWebVttOutput(kind,vtt[kind],lang)
+				this.showWebVttOutput(kind,vtt[kind],lang);
 			}
 		}
 	};
 
 	AblePlayer.prototype.showWebVttOutput = function(kind,vttString,lang) {
 
-		var $heading, filename, $p, pText, $textarea;
+		var heading, filename, p, pText, textarea;
 
-		$heading = $('<h3>').text( this.capitalizeFirstLetter( kind ) );
+		heading = this.createEl('h3', { text: this.capitalizeFirstLetter( kind ) });
 		filename = this.getFilenameFromTracks(kind,lang);
 		pText = 'If you made changes, copy/paste the following content ';
 		if (filename) {
@@ -1013,11 +1078,12 @@ function addVtsFunctions(AblePlayer) {
 		} else {
 			pText += 'into a new ' + this.getLanguageName(lang) + ' <em>' + kind + '</em> WebVTT file.';
 		}
-		$p = $('<p>',{
-			'class': 'able-vts-output-instructions'
-		}).html(pText);
-		$textarea = $('<textarea>').text(vttString);
-		$('#able-vts-output').append($heading,$p,$textarea);
+		p = this.createEl('p', {
+			'class': 'able-vts-output-instructions',
+			html: pText
+		});
+		textarea = this.createEl('textarea', { text: vttString });
+		document.getElementById('able-vts-output').append(heading,p,textarea);
 	};
 
 }

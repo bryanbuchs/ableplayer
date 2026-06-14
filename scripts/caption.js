@@ -1,19 +1,17 @@
-import $ from 'jquery';
-
 function addCaptionFunctions(AblePlayer) {
   AblePlayer.prototype.updateCaption = function (time) {
     if (
       !this.usingYouTubeCaptions &&
       !this.usingVimeoCaptions &&
-      typeof this.$captionsWrapper !== "undefined"
+      typeof this.captionsWrapper !== "undefined"
     ) {
       if (this.captionsOn) {
-        this.$captionsWrapper.show();
+        this.captionsWrapper.style.display = '';
         if (typeof time !== "undefined") {
           this.showCaptions(time);
         }
-      } else if (this.$captionsWrapper) {
-        this.$captionsWrapper.hide();
+      } else if (this.captionsWrapper) {
+        this.captionsWrapper.style.display = 'none';
         this.prefCaptions = 0;
       }
     }
@@ -21,15 +19,21 @@ function addCaptionFunctions(AblePlayer) {
 
   AblePlayer.prototype.updateCaptionsMenu = function (lang) {
     // uncheck all previous menu items
-    this.captionsPopup.find("li").attr("aria-checked", "false");
+    var liItems = Array.from(this.captionsPopup.querySelectorAll("li"));
+    liItems.forEach(function (li) {
+      li.setAttribute("aria-checked", "false");
+    });
     if (typeof lang === "undefined") {
       // check the last menu item (captions off)
-      this.captionsPopup.find("li").last().attr("aria-checked", "true");
+      if (liItems.length) {
+        liItems[liItems.length - 1].setAttribute("aria-checked", "true");
+      }
     } else {
       // check the newly selected lang
-      this.captionsPopup
-        .find("li[lang=" + lang + "]")
-        .attr("aria-checked", "true");
+      var langItem = this.captionsPopup.querySelector("li[lang=" + lang + "]");
+      if (langItem) {
+        langItem.setAttribute("aria-checked", "true");
+      }
     }
   };
 
@@ -101,10 +105,10 @@ function addCaptionFunctions(AblePlayer) {
       // stopgap to prevent spacebar in Firefox from reopening popup
       // immediately after closing it (used in handleCaptionToggle())
       thisObj.hidingPopup = true;
-      thisObj.captionsPopup.hide();
-      thisObj.$ccButton.attr("aria-expanded", "false");
+      thisObj.captionsPopup.style.display = 'none';
+      thisObj.ccButton.setAttribute("aria-expanded", "false");
       if (thisObj.mediaType === "audio") {
-        thisObj.$captionsContainer.removeClass("captions-off");
+        thisObj.captionsContainer.classList.remove("captions-off");
       }
       // Ensure stopgap gets cancelled if handleCaptionToggle() isn't called
       // e.g., if user triggered button with Enter or mouse click, not spacebar
@@ -112,7 +116,7 @@ function addCaptionFunctions(AblePlayer) {
         thisObj.hidingPopup = false;
       }, 100);
       thisObj.updateCaptionsMenu(thisObj.captionLang);
-      thisObj.waitThenFocus(thisObj.$ccButton);
+      thisObj.waitThenFocus(thisObj.ccButton);
 
       // save preference to cookie
       thisObj.prefCaptions = 1;
@@ -134,21 +138,21 @@ function addCaptionFunctions(AblePlayer) {
       thisObj.currentCaption = -1;
 
       if (thisObj.mediaType === "audio") {
-        thisObj.$captionsContainer.addClass("captions-off");
+        thisObj.captionsContainer.classList.add("captions-off");
       }
 
       // stopgap to prevent spacebar in Firefox from reopening popup
       // immediately after closing it (used in handleCaptionToggle())
       thisObj.hidingPopup = true;
-      thisObj.captionsPopup.hide();
-      thisObj.$ccButton.attr("aria-expanded", "false");
+      thisObj.captionsPopup.style.display = 'none';
+      thisObj.ccButton.setAttribute("aria-expanded", "false");
       // Ensure stopgap gets cancelled if handleCaptionToggle() isn't called
       // e.g., if user triggered button with Enter or mouse click, not spacebar
       setTimeout(function () {
         thisObj.hidingPopup = false;
       }, 100);
       thisObj.updateCaptionsMenu();
-      thisObj.waitThenFocus(thisObj.$ccButton);
+      thisObj.waitThenFocus(thisObj.ccButton);
 
       // save preference to cookie
       thisObj.prefCaptions = 0;
@@ -196,17 +200,18 @@ function addCaptionFunctions(AblePlayer) {
 			// use browser's built-in speech synthesis
 			this.announceText( 'caption', announcement, rate );
 		}
-        this.$captionsDiv.html(captionText);
+        this.captionsDiv.innerHTML = captionText;
         this.currentCaption = thisCaption;
         if (captionText.length === 0) {
           // hide captionsDiv; otherwise background-color is visible due to padding
-          this.$captionsDiv.css("display", "none");
+          this.captionsDiv.style.display = "none";
         } else {
-          this.$captionsDiv.css("display", "inline-block");
+          this.captionsDiv.style.display = "inline-block";
         }
       }
     } else {
-      this.$captionsDiv.html("").css("display", "none");
+      this.captionsDiv.innerHTML = "";
+      this.captionsDiv.style.display = "none";
       this.currentCaption = -1;
     }
   };
@@ -369,14 +374,14 @@ function addCaptionFunctions(AblePlayer) {
     return false;
   };
 
-  AblePlayer.prototype.stylizeCaptions = function ($element, pref) {
-    // $element is the jQuery element containing the captions
+  AblePlayer.prototype.stylizeCaptions = function (element, pref) {
+    // element is the native element containing the captions
     // this function handles stylizing of the sample caption text in the Prefs dialog
     // plus the actual production captions
     // TODO: consider applying the same user prefs to visible text-based description
-    var property, newValue, opacity;
+    var property, newValue, opacity, prefInput;
 
-    if (typeof $element !== "undefined") {
+    if (typeof element !== "undefined") {
       if (pref == "prefCaptionsPosition") {
         this.positionCaptions();
       } else if (typeof pref !== "undefined") {
@@ -392,44 +397,36 @@ function addCaptionFunctions(AblePlayer) {
         } else if (pref === "prefCaptionsOpacity") {
           property = "opacity";
         }
+        prefInput = document.getElementById(this.mediaId + "_" + pref);
         if (pref === "prefCaptionsOpacity") {
-          newValue =
-            parseFloat($("#" + this.mediaId + "_" + pref).val()) / 100.0;
+          newValue = parseFloat(prefInput.value) / 100.0;
         } else {
-          newValue = $("#" + this.mediaId + "_" + pref).val();
+          newValue = prefInput.value;
         }
-        $element.css(property, newValue);
+        element.style[property] = newValue;
       } else {
         // no property was specified, update all styles with current saved prefs
         opacity = parseFloat(this.prefCaptionsOpacity) / 100.0;
-        $element.css({
-          "font-family": this.prefCaptionsFont,
-          color: this.prefCaptionsColor,
-          "background-color": this.prefCaptionsBGColor,
-          opacity: opacity,
-        });
-        if ($element === this.$captionsDiv) {
-          if (typeof this.$captionsDiv !== "undefined") {
-            this.$captionsDiv.css({
-              "font-size": this.prefCaptionsSize,
-            });
+        element.style["font-family"] = this.prefCaptionsFont;
+        element.style.color = this.prefCaptionsColor;
+        element.style["background-color"] = this.prefCaptionsBGColor;
+        element.style.opacity = opacity;
+        if (element === this.captionsDiv) {
+          if (typeof this.captionsDiv !== "undefined") {
+            this.captionsDiv.style["font-size"] = this.prefCaptionsSize;
           }
         }
         if (this.prefCaptionsPosition === "below") {
           // also need to add the background color to the wrapper div
-          if (typeof this.$captionsWrapper !== "undefined") {
-            this.$captionsWrapper.css({
-              "background-color": this.prefCaptionsBGColor,
-              opacity: "1",
-            });
+          if (typeof this.captionsWrapper !== "undefined") {
+            this.captionsWrapper.style["background-color"] = this.prefCaptionsBGColor;
+            this.captionsWrapper.style.opacity = "1";
           }
         } else if (this.prefCaptionsPosition === "overlay") {
           // no background color for overlay wrapper, captions are displayed in-line
-          if (typeof this.$captionsWrapper !== "undefined") {
-            this.$captionsWrapper.css({
-              "background-color": "transparent",
-              opacity: "",
-            });
+          if (typeof this.captionsWrapper !== "undefined") {
+            this.captionsWrapper.style["background-color"] = "transparent";
+            this.captionsWrapper.style.opacity = "";
           }
         }
         this.positionCaptions();
@@ -443,24 +440,18 @@ function addCaptionFunctions(AblePlayer) {
     if (typeof position === "undefined") {
       position = this.prefCaptionsPosition;
     }
-    if (typeof this.$captionsWrapper !== "undefined") {
+    if (typeof this.captionsWrapper !== "undefined") {
       if (position == "below") {
-        this.$captionsWrapper
-          .removeClass("able-captions-overlay")
-          .addClass("able-captions-below");
+        this.captionsWrapper.classList.remove("able-captions-overlay");
+        this.captionsWrapper.classList.add("able-captions-below");
         // also need to update in-line styles
-        this.$captionsWrapper.css({
-          "background-color": this.prefCaptionsBGColor,
-          opacity: "1",
-        });
+        this.captionsWrapper.style["background-color"] = this.prefCaptionsBGColor;
+        this.captionsWrapper.style.opacity = "1";
       } else {
-        this.$captionsWrapper
-          .removeClass("able-captions-below")
-          .addClass("able-captions-overlay");
-        this.$captionsWrapper.css({
-          "background-color": "transparent",
-          opacity: "",
-        });
+        this.captionsWrapper.classList.remove("able-captions-below");
+        this.captionsWrapper.classList.add("able-captions-overlay");
+        this.captionsWrapper.style["background-color"] = "transparent";
+        this.captionsWrapper.style.opacity = "";
       }
     }
   };

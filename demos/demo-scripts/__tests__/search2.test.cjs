@@ -1,4 +1,3 @@
-const $ = require("jquery");
 const DOMPurify = require("dompurify");
 
 // Mock AblePlayer
@@ -22,9 +21,10 @@ require("../search2");
 
 describe("search2.js", () => {
   const sanitizeAndStrip = (input) => {
-    $("#terms").val(input);
+    const termsInput = document.getElementById("terms");
+    termsInput.value = input;
 
-    const rawSearch = $("#terms").val();
+    const rawSearch = termsInput.value;
     const cleanSearch = DOMPurify.sanitize(rawSearch);
     const punctuation = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
     const searchLetters = cleanSearch.split("");

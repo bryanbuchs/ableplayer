@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
 function addControlFunctions(AblePlayer) {
 
 	AblePlayer.prototype.seekTo = function (newTime) {
@@ -37,8 +35,8 @@ function addControlFunctions(AblePlayer) {
 		} else if (this.player === 'youtube') {
 			this.youTubePlayer.seekTo(newTime,true);
 			if (newTime > 0) {
-				if (typeof this.$posterImg !== 'undefined') {
-					this.$posterImg.hide();
+				if (typeof this.posterImg !== 'undefined') {
+					this.posterImg.style.display = 'none';
 				}
 			}
 			this.syncSignVideo( {'time' : newTime } );
@@ -274,7 +272,7 @@ function addControlFunctions(AblePlayer) {
 		}
 		this.syncSignVideo( { 'rate' : rate } );
 		this.playbackRate = rate;
-		this.$speed.text( this.translate( 'speed', 'Speed' ) + ': ' + rate.toFixed(2).toString() + 'x');
+		this.speed.textContent = this.translate( 'speed', 'Speed' ) + ': ' + rate.toFixed(2).toString() + 'x';
 	};
 
 	AblePlayer.prototype.getPlaybackRate = function () {
@@ -363,8 +361,8 @@ function addControlFunctions(AblePlayer) {
 		} else if (this.player === 'youtube') {
 
 			this.youTubePlayer.playVideo();
-			if (typeof this.$posterImg !== 'undefined') {
-				this.$posterImg.hide();
+			if (typeof this.posterImg !== 'undefined') {
+				this.posterImg.style.display = 'none';
 			}
 			this.stoppingYouTube = false;
 		} else if (this.player === 'vimeo') {
@@ -389,9 +387,11 @@ function addControlFunctions(AblePlayer) {
 
 		if (direction == 'out') {
 			// get the original height of two key components:
-			this.$playerDiv.addClass( 'fade-out' ).removeClass( 'fade-in' );
+			this.playerDiv.classList.add( 'fade-out' );
+			this.playerDiv.classList.remove( 'fade-in' );
 		} else if (direction == 'in') {
-			this.$playerDiv.addClass( 'fade-in' ).removeClass( 'fade-out' );
+			this.playerDiv.classList.add( 'fade-in' );
+			this.playerDiv.classList.remove( 'fade-out' );
 		}
 	};
 
@@ -482,7 +482,7 @@ function addControlFunctions(AblePlayer) {
 					// (from a seek button control) or if the seekBar has focus.
 					// We use document.activeElement instead of $(':focus') due to a strange bug:
 					// When the seekHead element is focused, .is(':focus') is failing and $(':focus') is returning an undefined element.
-					updateLive = this.liveUpdatePending || this.seekBar.seekHead.is($(document.activeElement));
+					updateLive = this.liveUpdatePending || this.seekBar.seekHead === AblePlayer.getActiveDOMElement();
 					this.liveUpdatePending = false;
 					if (this.useChapterTimes) {
 						this.seekBar.setPosition(this.chapterElapsed, updateLive);
@@ -499,36 +499,45 @@ function addControlFunctions(AblePlayer) {
 				}
 			}
 			// update elapsed & duration
-			if (typeof this.$durationContainer !== 'undefined') {
+			if (typeof this.durationContainer !== 'undefined') {
 				if (this.useChapterTimes) {
-					this.$durationContainer.text( this.formatSecondsAsColonTime(this.chapterDuration));
+					this.durationContainer.textContent = this.formatSecondsAsColonTime(this.chapterDuration);
 				} else {
-					this.$durationContainer.text( this.formatSecondsAsColonTime(this.duration));
+					this.durationContainer.textContent = this.formatSecondsAsColonTime(this.duration);
 				}
 			}
-			if (typeof this.$elapsedTimeContainer !== 'undefined') {
-				this.$elapsedTimeContainer.text(this.formatSecondsAsColonTime(displayElapsed));
+			if (typeof this.elapsedTimeContainer !== 'undefined') {
+				this.elapsedTimeContainer.textContent = this.formatSecondsAsColonTime(displayElapsed);
 			}
 
 			if (this.skin === 'legacy') {
 				// Update seekbar width.
 				// To do this, we need to calculate the width of all buttons surrounding it.
 				if (this.seekBar) {
-					let controlWrapper = this.seekBar.wrapperDiv.parent().parent();
-					leftControls = this.seekBar.wrapperDiv.parent().prev('div.able-left-controls');
-					rightControls = leftControls.next('div.able-right-controls');
-					widthUsed = leftControls.outerWidth(true);
-					rightControls.children().each(function () {
-						if ($(this).attr('role')=='button') {
-							widthUsed += $(this).outerWidth(true) + 5;
-						}
-					});
+					let seekbarSpan = this.seekBar.wrapperDiv.parentElement;
+					let controlWrapper = seekbarSpan.parentElement;
+					leftControls = seekbarSpan.previousElementSibling;
+					if (leftControls && !leftControls.matches('div.able-left-controls')) {
+						leftControls = null;
+					}
+					rightControls = leftControls ? leftControls.nextElementSibling : null;
+					if (rightControls && !rightControls.matches('div.able-right-controls')) {
+						rightControls = null;
+					}
+					widthUsed = leftControls ? leftControls.offsetWidth : 0;
+					if (rightControls) {
+						Array.from(rightControls.children).forEach(function (child) {
+							if (child.getAttribute('role') == 'button') {
+								widthUsed += child.offsetWidth + 5;
+							}
+						});
+					}
 					if (this.fullscreen) {
-						seekbarWidth = $(window).width() - widthUsed;
+						seekbarWidth = window.innerWidth - widthUsed;
 					} else {
 						// seekbar is wide enough to fill the remaining space
 						// include a 10px buffer to account for minor browser differences or custom styles.
-						seekbarWidth = controlWrapper.width() - widthUsed - 10;
+						seekbarWidth = controlWrapper.getBoundingClientRect().width - widthUsed - 10;
 					}
 					// Sometimes some minor fluctuations based on browser weirdness, so set a threshold.
 					if (Math.abs(seekbarWidth - this.seekBar.getWidth()) > 5) {
@@ -560,9 +569,9 @@ function addControlFunctions(AblePlayer) {
 		}
 
 		if (context === 'descriptions' || context == 'init') {
-			if (this.$descButton) {
+			if (this.descButton) {
 				this.toggleButtonState(
-					this.$descButton,
+					this.descButton,
 					this.descOn,
 					this.translate( 'turnOffDescriptions', 'Turn off descriptions' ),
 					this.translate( 'turnOnDescriptions', 'Turn on descriptions' ),
@@ -572,21 +581,19 @@ function addControlFunctions(AblePlayer) {
 
 		if (context === 'captions' || context == 'init') {
 
-			if (this.$ccButton) {
+			if (this.ccButton) {
 
 				captionsCount = this.captions.length;
 				if (captionsCount > 1) {
-					this.$ccButton.attr({
-						'aria-haspopup': 'true',
-						'aria-controls': this.mediaId + '-captions-menu'
-					});
+					this.ccButton.setAttribute('aria-haspopup', 'true');
+					this.ccButton.setAttribute('aria-controls', this.mediaId + '-captions-menu');
 				}
 				var ariaLabelOn = ( captionsCount > 1 ) ? this.translate( 'captions', 'Captions' ) : this.translate( 'showCaptions', 'Show captions' );
 				var ariaLabelOff = ( captionsCount > 1 ) ? this.translate( 'captions', 'Captions' ) : this.translate( 'hideCaptions', 'Hide captions' );
 				var ariaPressed = ( captionsCount > 1 ) ? true : false;
 
 				this.toggleButtonState(
-					this.$ccButton,
+					this.ccButton,
 					this.captionsOn,
 					ariaLabelOff,
 					ariaLabelOn,
@@ -596,27 +603,27 @@ function addControlFunctions(AblePlayer) {
 		}
 
 		if (context === 'fullscreen' || context == 'init'){
-			if (this.$fullscreenButton) {
+			if (this.fullscreenButton) {
 				if (!this.fullscreen) {
-					this.$fullscreenButton.attr( 'aria-label', this.translate( 'enterFullScreen', 'Enter full screen' ) );
-					this.getIcon( this.$fullscreenButton, 'fullscreen-expand' );
+					this.fullscreenButton.setAttribute( 'aria-label', this.translate( 'enterFullScreen', 'Enter full screen' ) );
+					this.getIcon( this.fullscreenButton, 'fullscreen-expand' );
 				} else {
-					this.$fullscreenButton.attr('aria-label', this.translate( 'exitFullScreen', 'Exit full screen' ) );
-					this.getIcon( this.$fullscreenButton, 'fullscreen-collapse' );
+					this.fullscreenButton.setAttribute('aria-label', this.translate( 'exitFullScreen', 'Exit full screen' ) );
+					this.getIcon( this.fullscreenButton, 'fullscreen-collapse' );
 				}
 			}
 		}
 		if (context === 'playpause' || context == 'init'){
-			if (typeof this.$bigPlayButton !== 'undefined' && typeof this.seekBar !== 'undefined') {
+			if (typeof this.bigPlayButton !== 'undefined' && typeof this.seekBar !== 'undefined') {
 				// Choose show/hide for big play button and adjust position.
 				if (this.paused && !this.seekBar.tracking) {
 					if (!this.hideBigPlayButton) {
-						this.$bigPlayButton.show();
-						this.$bigPlayButton.attr('aria-hidden', 'false');
+						this.bigPlayButton.style.display = '';
+						this.bigPlayButton.setAttribute('aria-hidden', 'false');
 					}
 				} else {
-					this.$bigPlayButton.hide();
-					this.$bigPlayButton.attr('aria-hidden', 'true');
+					this.bigPlayButton.style.display = 'none';
+					this.bigPlayButton.setAttribute('aria-hidden', 'true');
 				}
 			}
 		}
@@ -627,25 +634,25 @@ function addControlFunctions(AblePlayer) {
 				// Sync checkbox and autoScrollTranscript with user preference
 				if (this.prefAutoScrollTranscript === 1) {
 					this.autoScrollTranscript = true;
-					this.$autoScrollTranscriptCheckbox.prop('checked',true);
+					this.autoScrollTranscriptCheckbox.checked = true;
 				} else {
 					this.autoScrollTranscript = false;
-					this.$autoScrollTranscriptCheckbox.prop('checked',false);
+					this.autoScrollTranscriptCheckbox.checked = false;
 				}
 
 				// If transcript locked, scroll transcript to current highlight location.
 				if (this.autoScrollTranscript && this.currentHighlight) {
-					newTop = Math.floor(this.$transcriptDiv.scrollTop() +
-						$(this.currentHighlight).position().top -
-						(this.$transcriptDiv.height() / 2) +
-						($(this.currentHighlight).height() / 2));
-					if (newTop !== Math.floor(this.$transcriptDiv.scrollTop())) {
+					newTop = Math.floor(this.transcriptDiv.scrollTop +
+						this.currentHighlight[0].offsetTop -
+						(this.transcriptDiv.getBoundingClientRect().height / 2) +
+						(this.currentHighlight[0].getBoundingClientRect().height / 2));
+					if (newTop !== Math.floor(this.transcriptDiv.scrollTop)) {
 						// Set a flag to ignore the coming scroll event.
 						// there's no other way I know of to differentiate programmatic and user-initiated scroll events.
 						this.scrollingTranscript = true;
 						// only scroll once after moving a highlight
 						if (this.movingHighlight) {
-							this.$transcriptDiv.scrollTop(newTop);
+							this.transcriptDiv.scrollTop = newTop;
 							this.movingHighlight = false;
 						}
 					}
@@ -655,12 +662,10 @@ function addControlFunctions(AblePlayer) {
 
 		if (context === 'init') {
 
-			if (this.$chaptersButton) {
-				this.$chaptersButton.attr({
-					'aria-label': this.translate( 'chapters', 'Chapters' ),
-					'aria-haspopup': 'true',
-					'aria-controls': this.mediaId + '-chapters-menu'
-				});
+			if (this.chaptersButton) {
+				this.chaptersButton.setAttribute('aria-label', this.translate( 'chapters', 'Chapters' ));
+				this.chaptersButton.setAttribute('aria-haspopup', 'true');
+				this.chaptersButton.setAttribute('aria-controls', this.mediaId + '-chapters-menu');
 			}
 		}
 
@@ -679,15 +684,15 @@ function addControlFunctions(AblePlayer) {
 				// stoppingYouTube is true temporarily while video is paused and seeking to 0
 				// See notes in handleRestart()
 				// this.stoppingYouTube will be reset when seek to 0 is finished (in event.js > onMediaUpdateTime())
-				if (this.$status.text() !== this.translate( 'statusStopped', 'Stopped' ) ) {
-					this.$status.text( this.translate( 'statusStopped', 'Stopped' ) );
+				if (this.status.textContent !== this.translate( 'statusStopped', 'Stopped' ) ) {
+					this.status.textContent = this.translate( 'statusStopped', 'Stopped' );
 				}
-				this.getIcon( this.$playpauseButton, 'play' );
-			} else if (typeof this.$status !== 'undefined' && typeof this.seekBar !== 'undefined') {
+				this.getIcon( this.playpauseButton, 'play' );
+			} else if (typeof this.status !== 'undefined' && typeof this.seekBar !== 'undefined') {
 				// Update the text only if it's changed since it has role="alert";
 				// also don't update while tracking, since this may Pause/Play the player but we don't want to send a Pause/Play update.
 				this.getPlayerState().then(function(currentState) {
-					if (thisObj.$status.text() !== textByState[currentState] && !thisObj.seekBar.tracking) {
+					if (thisObj.status.textContent !== textByState[currentState] && !thisObj.seekBar.tracking) {
 						// Debounce updates; only update after status has stayed steadily different for a while
 						// "A while" is defined differently depending on context
 						if (thisObj.swappingSrc) {
@@ -711,7 +716,7 @@ function addControlFunctions(AblePlayer) {
 								thisObj.refreshControls(context);
 							}, thisObj.statusMessageThreshold);
 						} else if ((timestamp - thisObj.statusDebounceStart) > thisObj.statusMessageThreshold) {
-							thisObj.$status.text(textByState[currentState]);
+							thisObj.status.textContent = textByState[currentState];
 							thisObj.statusDebounceStart = null;
 							clearTimeout(thisObj.statusTimeout);
 							thisObj.statusTimeout = null;
@@ -725,11 +730,11 @@ function addControlFunctions(AblePlayer) {
 					// Don't change play/pause button display while using the seek bar (or if YouTube stopped)
 					if (!thisObj.seekBar.tracking && !thisObj.stoppingYouTube) {
 						if (currentState === 'paused' || currentState === 'stopped' || currentState === 'ended') {
-							thisObj.$playpauseButton.attr('aria-label', thisObj.translate( 'play', 'Play' ) );
-							thisObj.getIcon( thisObj.$playpauseButton, 'play' );
+							thisObj.playpauseButton.setAttribute('aria-label', thisObj.translate( 'play', 'Play' ) );
+							thisObj.getIcon( thisObj.playpauseButton, 'play' );
 						} else {
-							thisObj.$playpauseButton.attr('aria-label', thisObj.translate( 'pause', 'Pause' ) );
-							thisObj.getIcon( thisObj.$playpauseButton, 'pause' );
+							thisObj.playpauseButton.setAttribute('aria-label', thisObj.translate( 'pause', 'Pause' ) );
+							thisObj.getIcon( thisObj.playpauseButton, 'pause' );
 						}
 					}
 				});
@@ -739,13 +744,18 @@ function addControlFunctions(AblePlayer) {
 		// Show/hide status bar content conditionally
 		if (!this.fullscreen) {
 			statusBarWidthBreakpoint = 300;
-			if (this.$statusBarDiv.width() < statusBarWidthBreakpoint) {
+			var speedSpan = this.statusBarDiv.querySelector('span.able-speed');
+			if (this.statusBarDiv.getBoundingClientRect().width < statusBarWidthBreakpoint) {
 				// Player is too small for a speed span
-				this.$statusBarDiv.find('span.able-speed').hide();
+				if (speedSpan) {
+					speedSpan.style.display = 'none';
+				}
 				this.hidingSpeed = true;
 			} else {
 				if (this.hidingSpeed) {
-					this.$statusBarDiv.find('span.able-speed').show();
+					if (speedSpan) {
+						speedSpan.style.display = '';
+					}
 					this.hidingSpeed = false;
 				}
 			}
@@ -791,7 +801,7 @@ function addControlFunctions(AblePlayer) {
 
 		// currently on the first track
 		// wrap to bottom and play the last track
-		let newIndex = (this.playlistIndex === 0) ? this.$playlist.length - 1 : this.playlistIndex - 1;
+		let newIndex = (this.playlistIndex === 0) ? this.playlist.length - 1 : this.playlistIndex - 1;
 		this.cueingPlaylistItem = true; // stopgap to prevent multiple firings
 		this.cuePlaylistItem(newIndex);
 	};
@@ -800,7 +810,7 @@ function addControlFunctions(AblePlayer) {
 
 		// currently on the last track
 		// wrap to top and play the first track
-		let newIndex = (this.playlistIndex === this.$playlist.length - 1) ? 0 : this.playlistIndex + 1;
+		let newIndex = (this.playlistIndex === this.playlist.length - 1) ? 0 : this.playlistIndex + 1;
 		this.cueingPlaylistItem = true; // stopgap to prevent multiple firings
 		this.cuePlaylistItem(newIndex);
 	};
@@ -922,7 +932,7 @@ function addControlFunctions(AblePlayer) {
 				} else if (this.usingVimeoCaptions) {
 					this.vimeoPlayer.disableTextTrack();
 				} else {
-					this.$captionsWrapper.hide();
+					this.captionsWrapper.style.display = 'none';
 				}
 			} else {
 				// captions are off. Turn them on.
@@ -950,7 +960,7 @@ function addControlFunctions(AblePlayer) {
 						}
 					});
 				} else {
-					this.$captionsWrapper.show();
+					this.captionsWrapper.style.display = '';
 				}
 				for (var i=0; i<captions.length; i++) {
 					if (captions[i].def === true) { // this is the default language
@@ -965,24 +975,30 @@ function addControlFunctions(AblePlayer) {
 		} else {
 			// there is more than one caption track.
 			// clicking on a track is handled via caption.js > getCaptionClickFunction()
-			if (this.captionsPopup && this.captionsPopup.is(':visible')) {
-				this.captionsPopup.hide();
+			if (this.captionsPopup && this.captionsPopup.offsetParent !== null) {
+				this.captionsPopup.style.display = 'none';
 				this.hidingPopup = false;
-				this.$ccButton.attr('aria-expanded', 'false')
-				this.waitThenFocus(this.$ccButton);
+				this.ccButton.setAttribute('aria-expanded', 'false');
+				this.waitThenFocus(this.ccButton);
 			} else {
 				this.closePopups();
 				if (this.captionsPopup) {
-					this.captionsPopup.show();
-					this.$ccButton.attr('aria-expanded','true');
+					this.captionsPopup.style.display = '';
+					this.ccButton.setAttribute('aria-expanded', 'true');
 
 					// Gives time to "register" expanded ccButton
 					setTimeout(function() {
-						thisObj.captionsPopup.css('top', thisObj.$ccButton.position().top - thisObj.captionsPopup.outerHeight());
-						thisObj.captionsPopup.css('left', thisObj.$ccButton.position().left)
+						thisObj.captionsPopup.style.top = (thisObj.ccButton.offsetTop - thisObj.captionsPopup.offsetHeight) + 'px';
+						thisObj.captionsPopup.style.left = thisObj.ccButton.offsetLeft + 'px';
 						// Place focus on the first button (even if another button is checked)
-						thisObj.captionsPopup.find('li').removeClass('able-focus');
-						thisObj.captionsPopup.find('li').first().trigger('focus').addClass('able-focus');
+						var capItems = Array.from(thisObj.captionsPopup.querySelectorAll('li'));
+						capItems.forEach(function (li) {
+							li.classList.remove('able-focus');
+						});
+						if (capItems.length) {
+							capItems[0].focus();
+							capItems[0].classList.add('able-focus');
+						}
 					}, 50);
 				}
 			}
@@ -991,7 +1007,7 @@ function addControlFunctions(AblePlayer) {
 		var ariaLabelOff = ( captions.length > 1 ) ? this.translate( 'captions', 'Captions' ) : this.translate( 'hideCaptions', 'Hide captions' );
 
 		this.toggleButtonState(
-			this.$ccButton,
+			this.ccButton,
 			this.captionsOn,
 			ariaLabelOff,
 			ariaLabelOn,
@@ -1003,16 +1019,16 @@ function addControlFunctions(AblePlayer) {
 	 * Gives enough time for DOM changes to take effect before adjusting focus.
 	 * Helpful for allowing screen reading of elements whose state is intermittently changed.
 	 *
-	 * @param {*} $el element to focus on
+	 * @param {*} el element to focus on
 	 * @param {*} timeout optional wait time in milliseconds before focus
 	 */
-	AblePlayer.prototype.waitThenFocus = function($el, timeout) {
+	AblePlayer.prototype.waitThenFocus = function(el, timeout) {
 
 		// Default wait time of 50 ms
 		var _timeout = (timeout === undefined || timeout === null) ? 50 : timeout;
 
 		setTimeout(function() {
-			$el.trigger('focus');
+			el.focus();
 		}, _timeout);
 	}
 
@@ -1023,24 +1039,32 @@ function addControlFunctions(AblePlayer) {
 			this.hidingPopup = false;
 			return false;
 		}
-		if (this.chaptersPopup.is(':visible')) {
-			this.chaptersPopup.hide();
+		if (this.chaptersPopup.offsetParent !== null) {
+			this.chaptersPopup.style.display = 'none';
 			this.hidingPopup = false;
-			this.$chaptersButton.attr('aria-expanded','false').trigger('focus');
+			this.chaptersButton.setAttribute('aria-expanded', 'false');
+			this.chaptersButton.focus();
 		} else {
 			this.closePopups();
-			this.chaptersPopup.show();
-			this.$chaptersButton.attr('aria-expanded','true');
-			this.chaptersPopup.css('top', this.$chaptersButton.position().top - this.chaptersPopup.outerHeight());
-			this.chaptersPopup.css('left', this.$chaptersButton.position().left)
+			this.chaptersPopup.style.display = '';
+			this.chaptersButton.setAttribute('aria-expanded', 'true');
+			this.chaptersPopup.style.top = (this.chaptersButton.offsetTop - this.chaptersPopup.offsetHeight) + 'px';
+			this.chaptersPopup.style.left = this.chaptersButton.offsetLeft + 'px';
 
 			// Highlight the current chapter, if any chapters are checked
 			// Otherwise, place focus on the first chapter
-			this.chaptersPopup.find('li').removeClass('able-focus');
-			if (this.chaptersPopup.find('li[aria-checked="true"]').length) {
-				this.chaptersPopup.find('li[aria-checked="true"]').trigger('focus').addClass('able-focus');
-			} else {
-				this.chaptersPopup.find('li').first().addClass('able-focus').attr('aria-checked','true').trigger('focus');
+			var chapItems = Array.from(this.chaptersPopup.querySelectorAll('li'));
+			chapItems.forEach(function (li) {
+				li.classList.remove('able-focus');
+			});
+			var checkedChapter = this.chaptersPopup.querySelector('li[aria-checked="true"]');
+			if (checkedChapter) {
+				checkedChapter.focus();
+				checkedChapter.classList.add('able-focus');
+			} else if (chapItems.length) {
+				chapItems[0].classList.add('able-focus');
+				chapItems[0].setAttribute('aria-checked', 'true');
+				chapItems[0].focus();
 			}
 		}
 	};
@@ -1050,9 +1074,9 @@ function addControlFunctions(AblePlayer) {
 		this.descOn = !this.descOn;
 		this.prefDesc = + this.descOn; // convert boolean to integer
 		this.updatePreferences('prefDesc');
-		if (typeof this.$descDiv !== 'undefined') {
-			if (!this.$descDiv.is(':hidden')) {
-				this.$descDiv.hide();
+		if (typeof this.descDiv !== 'undefined') {
+			if (this.descDiv.offsetParent !== null) {
+				this.descDiv.style.display = 'none';
 			}
 			// NOTE: now showing $descDiv here if previously hidden
 			// that's handled elsewhere, dependent on whether there's text to show
@@ -1085,13 +1109,16 @@ function addControlFunctions(AblePlayer) {
 			this.hidingPopup = false;
 			return false;
 		}
-		if (this.prefsPopup.is(':visible')) {
-			this.prefsPopup.hide();
-			this.$prefsButton.attr('aria-expanded','false');
+		if (this.prefsPopup.offsetParent !== null) {
+			this.prefsPopup.style.display = 'none';
+			this.prefsButton.setAttribute('aria-expanded', 'false');
 			// restore each menu item to original hidden state
-			this.prefsPopup.find('li').removeClass('able-focus').attr('tabindex','-1');
+			Array.from(this.prefsPopup.querySelectorAll('li')).forEach(function (li) {
+				li.classList.remove('able-focus');
+				li.setAttribute('tabindex', '-1');
+			});
 			if (!this.showingPrefsDialog) {
-				this.$prefsButton.trigger('focus');
+				this.prefsButton.focus();
 			}
 			// wait briefly, then reset hidingPopup
 			setTimeout(function() {
@@ -1099,32 +1126,40 @@ function addControlFunctions(AblePlayer) {
 			},100);
 		} else {
 			this.closePopups();
-			this.prefsPopup.show();
-			this.$prefsButton.attr('aria-expanded','true');
-			this.$prefsButton.trigger('focus'); // focus first on prefs button to announce expanded state
+			this.prefsPopup.style.display = '';
+			this.prefsButton.setAttribute('aria-expanded', 'true');
+			this.prefsButton.focus(); // focus first on prefs button to announce expanded state
 			// give time for focus on button then adjust popup settings and focus
 			setTimeout(function() {
-				prefsButtonPosition = thisObj.$prefsButton.position();
-				prefsMenuRight = thisObj.$ableDiv.width() - 5;
-				prefsMenuLeft = prefsMenuRight - thisObj.prefsPopup.width();
-				thisObj.prefsPopup.css('top', prefsButtonPosition.top - thisObj.prefsPopup.outerHeight());
-				thisObj.prefsPopup.css('left', prefsMenuLeft);
+				prefsButtonPosition = { top: thisObj.prefsButton.offsetTop, left: thisObj.prefsButton.offsetLeft };
+				prefsMenuRight = thisObj.ableDiv.getBoundingClientRect().width - 5;
+				prefsMenuLeft = prefsMenuRight - thisObj.prefsPopup.getBoundingClientRect().width;
+				thisObj.prefsPopup.style.top = (prefsButtonPosition.top - thisObj.prefsPopup.offsetHeight) + 'px';
+				thisObj.prefsPopup.style.left = prefsMenuLeft + 'px';
 				// remove prior focus and set focus on first item; also change tabindex from -1 to 0
-				thisObj.prefsPopup.find('li').removeClass('able-focus').attr('tabindex','0');
-				thisObj.prefsPopup.find('li').first().trigger('focus').addClass('able-focus');
+				var prefItems = Array.from(thisObj.prefsPopup.querySelectorAll('li'));
+				prefItems.forEach(function (li) {
+					li.classList.remove('able-focus');
+					li.setAttribute('tabindex', '0');
+				});
+				if (prefItems.length) {
+					prefItems[0].focus();
+					prefItems[0].classList.add('able-focus');
+				}
 			}, 50);
 		}
 	};
 
 	AblePlayer.prototype.handleTranscriptToggle = function () {
 		var thisObj = this;
-		var visible = this.$transcriptDiv.is(':visible');
+		var visible = this.transcriptDiv.offsetParent !== null;
 		if ( visible ) {
-			this.$transcriptArea.hide();
-			this.toggleButtonState( this.$transcriptButton, ! visible, this.translate( 'hideTranscript', 'Hide transcript' ), this.translate( 'showTranscript', 'Show transcript' ) );
+			this.transcriptArea.style.display = 'none';
+			this.toggleButtonState( this.transcriptButton, ! visible, this.translate( 'hideTranscript', 'Hide transcript' ), this.translate( 'showTranscript', 'Show transcript' ) );
 			this.prefTranscript = 0;
 			if ( this.transcriptType === 'popup' ) {
-				this.$transcriptButton.trigger('focus').addClass('able-focus');
+				this.transcriptButton.focus();
+				this.transcriptButton.classList.add('able-focus');
 				// wait briefly before resetting stopgap var
 				// otherwise the keypress used to select 'Close' will trigger the transcript button
 				// Benchmark tests: If this is gonna happen, it typically happens in around 3ms; max 12ms
@@ -1136,22 +1171,25 @@ function addControlFunctions(AblePlayer) {
 		} else {
 			if ( this.transcriptType === 'popup' ) {
 				this.positionDraggableWindow('transcript');
-				this.$transcriptArea.show();
+				this.transcriptArea.style.display = '';
 				// showing transcriptArea has a cascading effect of showing all content *within* transcriptArea
 				// need to re-hide the popup menu
-				this.$transcriptPopup.hide();
-				this.toggleButtonState( this.$transcriptButton, ! visible, this.translate( 'hideTranscript', 'Hide transcript' ), this.translate( 'showTranscript', 'Show transcript' ) );
+				this.transcriptPopup.style.display = 'none';
+				this.toggleButtonState( this.transcriptButton, ! visible, this.translate( 'hideTranscript', 'Hide transcript' ), this.translate( 'showTranscript', 'Show transcript' ) );
 				this.prefTranscript = 1;
 				// move focus to first focusable element (window options button)
 				this.focusNotClick = true;
-				this.$transcriptArea.find('button').first().trigger('focus');
+				var firstTranscriptButton = this.transcriptArea.querySelector('button');
+				if (firstTranscriptButton) {
+					firstTranscriptButton.focus();
+				}
 				// wait briefly before resetting stopgap var
 				setTimeout(function() {
 					thisObj.focusNotClick = false;
 				}, 100);
 			} else {
-				this.toggleButtonState( this.$transcriptButton, ! visible, this.translate( 'hideTranscript', 'Hide transcript' ), this.translate( 'showTranscript', 'Show transcript' ) );
-				this.$transcriptArea.show();
+				this.toggleButtonState( this.transcriptButton, ! visible, this.translate( 'hideTranscript', 'Hide transcript' ), this.translate( 'showTranscript', 'Show transcript' ) );
+				this.transcriptArea.style.display = '';
 			}
 		}
 		this.updatePreferences('prefTranscript');
@@ -1160,12 +1198,13 @@ function addControlFunctions(AblePlayer) {
 	AblePlayer.prototype.handleSignToggle = function () {
 
 		var thisObj = this;
-		var visible = this.$signWindow.is(':visible');
+		var visible = this.signWindow.offsetParent !== null;
 		if ( visible ) {
-			this.$signWindow.hide();
-			this.toggleButtonState( this.$signButton, ! visible, this.translate( 'hideSign', 'Hide sign language' ), this.translate( 'showSign', 'Show sign language' ) );
+			this.signWindow.style.display = 'none';
+			this.toggleButtonState( this.signButton, ! visible, this.translate( 'hideSign', 'Hide sign language' ), this.translate( 'showSign', 'Show sign language' ) );
 			this.prefSign = 0;
-			this.$signButton.trigger('focus').addClass('able-focus');
+			this.signButton.focus();
+			this.signButton.classList.add('able-focus');
 			// wait briefly before resetting stopgap var
 			// otherwise the keypress used to select 'Close' will trigger the transcript button
 			setTimeout(function() {
@@ -1173,14 +1212,17 @@ function addControlFunctions(AblePlayer) {
 			}, 100);
 		} else {
 			this.positionDraggableWindow('sign');
-			this.$signWindow.show();
+			this.signWindow.style.display = '';
 			// showing signWindow has a cascading effect of showing all content *within* signWindow
 			// need to re-hide the popup menu
-			this.$signPopup.hide();
-			this.toggleButtonState( this.$signButton, ! visible, this.translate( 'hideSign', 'Hide sign language' ), this.translate( 'showSign', 'Show sign language' ) );
+			this.signPopup.style.display = 'none';
+			this.toggleButtonState( this.signButton, ! visible, this.translate( 'hideSign', 'Hide sign language' ), this.translate( 'showSign', 'Show sign language' ) );
 			this.prefSign = 1;
 			this.focusNotClick = true;
-			this.$signWindow.find('button').first().trigger('focus');
+			var firstSignButton = this.signWindow.querySelector('button');
+			if (firstSignButton) {
+				firstSignButton.focus();
+			}
 			// wait briefly before resetting stopgap var
 			// otherwise the keypress used to select 'Close' will trigger the transcript button
 			setTimeout(function() {
@@ -1196,8 +1238,7 @@ function addControlFunctions(AblePlayer) {
 			return;
 		}
 		var thisObj = this;
-		var $el = this.$ableWrapper;
-		var el = $el[0];
+		var el = this.ableWrapper;
 
 		if (this.nativeFullscreenSupported()) {
 			// Note: many varying names for options for browser compatibility.
@@ -1250,7 +1291,7 @@ function addControlFunctions(AblePlayer) {
 		// add event handlers for changes in fullscreen mode.
 		// Browsers natively trigger this event with the Escape key,
 		// in addition to clicking the exit fullscreen button
-		$(document).on('fullscreenchange webkitfullscreenchange', function(e) {
+		var fullscreenChangeHandler = function(e) {
 			// NOTE: e.type = the specific event that fired (in case needing to control for browser-specific idiosyncrasies)
 			if (!thisObj.fullscreen) {
 				// user has just exited full screen
@@ -1278,7 +1319,9 @@ function addControlFunctions(AblePlayer) {
 				thisObj.clickedFullscreenButton = false;
 				thisObj.restoringAfterFullscreen = false;
 			},100);
-		});
+		};
+		document.addEventListener('fullscreenchange', fullscreenChangeHandler);
+		document.addEventListener('webkitfullscreenchange', fullscreenChangeHandler);
 	};
 
 	AblePlayer.prototype.handleFullscreenToggle = function () {
@@ -1325,18 +1368,20 @@ function addControlFunctions(AblePlayer) {
 		this.refreshControls('transcript');
 	};
 
-	AblePlayer.prototype.getIcon = function( $button, id) {
+	AblePlayer.prototype.getIcon = function( button, id) {
 		// Remove existing HTML before generating.
 		// iconData: [0 = svg viewbox, 1 = svg path]
 		// Font and image icon functionality was removed in 5.0.0 in favor of SVG.
 		var iconData = this.getIconData( id );
 
-		var existingIcon = $button.find( 'svg#ableplayer-' + id );
+		var existingIcon = button.querySelector( 'svg#ableplayer-' + id );
 		// Avoid repainting icon if there's no change.
-		if ( existingIcon.length > 0 ) {
+		if ( existingIcon ) {
 			return;
 		}
-		$button.find('svg').remove();
+		Array.from(button.querySelectorAll('svg')).forEach(function (svg) {
+			svg.remove();
+		});
 
 		// Outdented for simpler diff
 			// Function to create SVG nodes.
@@ -1357,44 +1402,44 @@ function addControlFunctions(AblePlayer) {
 			let path = getNode( 'path', { d: iconData[1] } );
 			icon.appendChild( path );
 
-			$button.append( icon );
-			// Refresh the DOM.
-			$button.html($button.html());
+			button.append( icon );
 	};
 
-	AblePlayer.prototype.setText = function( $button, text ) {
-		$button.attr( 'aria-label', text );
+	AblePlayer.prototype.setText = function( button, text ) {
+		button.setAttribute( 'aria-label', text );
 	};
 
-	AblePlayer.prototype.toggleButtonState = function($button, isOn, onLabel, offLabel, ariaPressed = false, ariaExpanded = false) {
+	AblePlayer.prototype.toggleButtonState = function(button, isOn, onLabel, offLabel, ariaPressed = false, ariaExpanded = false) {
 		// isOn means "the feature is being turned on".
-		let buttonOff = ( $button.hasClass( 'buttonOff' ) ) ? true : false;
+		let buttonOff = ( button.classList.contains( 'buttonOff' ) ) ? true : false;
 		if ( buttonOff && ! isOn || ! buttonOff && isOn ) {
 			// Only toggle state if button state does not match feature state.
 			return;
 		}
 		if (! isOn) {
-			$button.addClass('buttonOff').attr('aria-label', offLabel);
+			button.classList.add('buttonOff');
+			button.setAttribute('aria-label', offLabel);
 			if ( ariaPressed ) {
-				$button.attr('aria-pressed', 'false');
+				button.setAttribute('aria-pressed', 'false');
 			}
 			if ( ariaExpanded ) {
-				$button.attr( 'aria-expanded', 'false' );
+				button.setAttribute( 'aria-expanded', 'false' );
 			}
 		} else {
-			$button.removeClass('buttonOff').attr('aria-label', onLabel);
+			button.classList.remove('buttonOff');
+			button.setAttribute('aria-label', onLabel);
 			if ( ariaPressed ) {
-				$button.attr('aria-pressed', 'true');
+				button.setAttribute('aria-pressed', 'true');
 			}
 			if ( ariaExpanded ) {
-				$button.attr( 'aria-expanded', 'true' );
+				button.setAttribute( 'aria-expanded', 'true' );
 			}
 		}
 	};
 
-	AblePlayer.prototype.showTooltip = function($tooltip) {
+	AblePlayer.prototype.showTooltip = function(tooltip) {
 
-		$tooltip.show();
+		tooltip.style.display = '';
 	};
 
 	AblePlayer.prototype.showAlert = function( msg, location = 'main' ) {
@@ -1404,25 +1449,28 @@ function addControlFunctions(AblePlayer) {
 		// 'screenreader (visibly hidden)
 		// 'sign' (sign language window)
 		// 'transcript' (transcript window)
-		var thisObj, $alertBox, $parentWindow;
+		var thisObj, alertBox, parentWindow;
 
 		thisObj = this;
-		$alertBox = thisObj.$alertBox;
-		$parentWindow = thisObj.$ableDiv;
+		alertBox = thisObj.alertBox;
+		parentWindow = thisObj.ableDiv;
 		if (location === 'transcript') {
-			$parentWindow = thisObj.$transcriptArea;
+			parentWindow = thisObj.transcriptArea;
 		} else if (location === 'sign') {
-			$parentWindow = thisObj.$signWindow;
+			parentWindow = thisObj.signWindow;
 		} else if (location === 'screenreader') {
-			$alertBox = thisObj.$srAlertBox;
+			alertBox = thisObj.srAlertBox;
 		}
-		$alertBox.find('span').text(msg);
-		$alertBox.appendTo($parentWindow)
-		$alertBox.css( {'display': 'flex'} );
+		var alertSpan = alertBox.querySelector('span');
+		if (alertSpan) {
+			alertSpan.textContent = msg;
+		}
+		parentWindow.append(alertBox);
+		alertBox.style.display = 'flex';
 
 		if (location !== 'screenreader') {
 			setTimeout( function () {
-				$alertBox.hide();
+				alertBox.style.display = 'none';
 			}, 30000 );
 		}
 	};
@@ -1443,7 +1491,7 @@ function addControlFunctions(AblePlayer) {
 	// Resizes all relevant player attributes.
 	AblePlayer.prototype.resizePlayer = function (width, height) {
 
-		var captionSize, newWidth, newHeight, $iframe;
+		var captionSize, newWidth, newHeight, iframe;
 
 		if (this.mediaType === 'audio') {
 			return;
@@ -1465,21 +1513,21 @@ function addControlFunctions(AblePlayer) {
 				}
 			} else {
 				// playerWidth was not defined via HTML attributes
-				newWidth = (this.player === 'html5') ? $(window).width() : this.$ableWrapper.width();
+				newWidth = (this.player === 'html5') ? window.innerWidth : this.ableWrapper.getBoundingClientRect().width;
 				newHeight = Math.round(newWidth * this.aspectRatio);
 			}
 		} else if (this.fullscreen) {
-			this.$ableWrapper.addClass('fullscreen');
-			newWidth = $(window).width();
+			this.ableWrapper.classList.add('fullscreen');
+			newWidth = window.innerWidth;
 			// the 5 pixel buffer is arbitrary, but results in a better fit for all browsers
-			newHeight = $(window).height() - this.$playerDiv.outerHeight() - 5;
+			newHeight = window.innerHeight - this.playerDiv.offsetHeight - 5;
 			this.positionCaptions('overlay');
 		} else { // not fullscreen, and not first time initializing player
-			this.$ableWrapper.removeClass('fullscreen');
+			this.ableWrapper.classList.remove('fullscreen');
 			if (this.player === 'html5') {
-				newWidth = (this.playerWidth) ? this.playerWidth : $(window).width();
+				newWidth = (this.playerWidth) ? this.playerWidth : window.innerWidth;
 			} else {
-				newWidth = this.$ableWrapper.width();
+				newWidth = this.ableWrapper.getBoundingClientRect().width;
 			}
 			newHeight = Math.round(newWidth * this.aspectRatio);
 			this.positionCaptions(this.prefCaptionsPosition);
@@ -1489,7 +1537,7 @@ function addControlFunctions(AblePlayer) {
 		}
 		// Now size the player with newWidth and newHeight
 		if (this.player === 'youtube' || this.player === 'vimeo') {
-			$iframe = this.$ableWrapper.find('iframe');
+			iframe = this.ableWrapper.querySelector('iframe');
 			if (this.player === 'youtube' && this.youTubePlayer) {
 				// alternatively, YouTube API offers a method for setting the video size
 				// this adds width and height attributes to the iframe
@@ -1498,44 +1546,41 @@ function addControlFunctions(AblePlayer) {
 			} else {
 				// Vimeo API does not have a method for changing size of player
 				// Therefore, need to change iframe attributes directly
-				$iframe.attr({
-					'width': newWidth,
-					'height': newHeight
-				});
+				if (iframe) {
+					iframe.setAttribute('width', newWidth);
+					iframe.setAttribute('height', newHeight);
+				}
 			}
 			if (this.playerWidth && this.playerHeight) {
 				if (this.fullscreen) {
 					// remove constraints
-					$iframe.css({
-						'max-width': '',
-						'max-height': ''
-					});
+					if (iframe) {
+						iframe.style.maxWidth = '';
+						iframe.style.maxHeight = '';
+					}
 				} else {
 					// use CSS on iframe to enforce explicitly defined size constraints
-					$iframe.css({
-						'max-width': this.playerWidth + 'px',
-						'max-height': this.playerHeight + 'px'
-					});
+					if (iframe) {
+						iframe.style.maxWidth = this.playerWidth + 'px';
+						iframe.style.maxHeight = this.playerHeight + 'px';
+					}
 				}
 			}
 		} else if (this.player === 'html5') {
 			if (this.fullscreen) {
-				this.$media.attr({
-					'width': newWidth,
-					'height': newHeight
-				});
-				this.$ableWrapper.css({
-					'width': newWidth,
-					'height': newHeight
-				});
+				this.media.setAttribute('width', newWidth);
+				this.media.setAttribute('height', newHeight);
+				this.ableWrapper.style.width = newWidth + 'px';
+				this.ableWrapper.style.height = newHeight + 'px';
 			} else {
 					// No constraints. Let CSS handle the positioning.
-				this.$media.removeAttr('width height');
-				this.$ableWrapper.removeAttr( 'style' );
+				this.media.removeAttribute('width');
+				this.media.removeAttribute('height');
+				this.ableWrapper.removeAttribute( 'style' );
 			}
 		}
 		// Resize captions
-		if (typeof this.$captionsDiv !== 'undefined') {
+		if (typeof this.captionsDiv !== 'undefined') {
 
 			// Font-size is too small in full screen view
 			// use viewport units (vw) for large viewports
@@ -1554,9 +1599,7 @@ function addControlFunctions(AblePlayer) {
 			} else {
 				captionSize = captionSize + '%';
 			}
-			this.$captionsDiv.css({
-				'font-size': captionSize
-			});
+			this.captionsDiv.style.fontSize = captionSize;
 		}
 		this.refreshControls();
 	};
@@ -1567,16 +1610,16 @@ function addControlFunctions(AblePlayer) {
 		// (they sometimes disappear off-screen when entering fullscreen mode)
 		// if off-screen, recalculate so they are back on screen
 
-		var window, windowPos, windowTop, windowLeft, windowRight, windowWidth, windowBottom, windowHeight;
+		var win, windowPos, windowTop, windowLeft, windowRight, windowWidth, windowBottom, windowHeight;
 
 		if (which == 'transcript') {
-			window = this.$transcriptArea;
+			win = this.transcriptArea;
 		} else if (which == 'sign') {
-			window = this.$signWindow;
+			win = this.signWindow;
 		}
-		windowWidth = window.width();
-		windowHeight = window.height();
-		windowPos = window.position();
+		windowWidth = win.getBoundingClientRect().width;
+		windowHeight = win.getBoundingClientRect().height;
+		windowPos = { top: win.offsetTop, left: win.offsetLeft };
 		windowTop = windowPos.top;
 		windowLeft = windowPos.left;
 		windowRight = windowLeft + windowWidth;
@@ -1584,19 +1627,19 @@ function addControlFunctions(AblePlayer) {
 
 		if (windowTop < 0) { // off-screen to the top
 			windowTop = 10;
-			window.css('top',windowTop);
+			win.style.top = windowTop + 'px';
 		}
 		if (windowLeft < 0) { // off-screen to the left
 			windowLeft = 10;
-			window.css('left',windowLeft);
+			win.style.left = windowLeft + 'px';
 		}
 		if (windowRight > width) { // off-screen to the right
 			windowLeft = (width - 20) - windowWidth;
-			window.css('left',windowLeft);
+			win.style.left = windowLeft + 'px';
 		}
 		if (windowBottom > height) { // off-screen to the bottom
 			windowTop = (height - 10) - windowHeight;
-			window.css('top',windowTop);
+			win.style.top = windowTop + 'px';
 		}
 	};
 
@@ -1616,20 +1659,20 @@ function addControlFunctions(AblePlayer) {
 		// Excluding it here assumes "No". Our immediate concern is with the relationship between our own components.
 		// If we elevate our z-indexes so our content is on top, we run the risk of starting a z-index war.
 
-		if (typeof this.$transcriptArea === 'undefined' || typeof this.$signWindow === 'undefined' ) {
+		if (typeof this.transcriptArea === 'undefined' || typeof this.signWindow === 'undefined' ) {
 			// at least one of the windows doesn't exist, so there's no conflict
 			// since z-index may have been stored to a cookie on another page, need to restore default
-			if (typeof this.$transcriptArea !== 'undefined') {
-				transcriptZ = parseInt(this.$transcriptArea.css('z-index'));
+			if (typeof this.transcriptArea !== 'undefined') {
+				transcriptZ = parseInt(window.getComputedStyle(this.transcriptArea).zIndex);
 				if (transcriptZ > defLowZ) {
 					// restore to the default
-					this.$transcriptArea.css('z-index',defLowZ);
+					this.transcriptArea.style.zIndex = defLowZ;
 				}
-			} else if (typeof this.$signWindow !== 'undefined') {
-				signZ = parseInt(this.$signWindow.css('z-index'));
+			} else if (typeof this.signWindow !== 'undefined') {
+				signZ = parseInt(window.getComputedStyle(this.signWindow).zIndex);
 				if (signZ > defHighZ) {
 					// restore to the default
-					this.$signWindow.css('z-index',defHighZ);
+					this.signWindow.style.zIndex = defHighZ;
 				}
 			}
 			return false;
@@ -1638,8 +1681,8 @@ function addControlFunctions(AblePlayer) {
 		// both windows exist
 
 		// get current values
-		transcriptZ = parseInt(this.$transcriptArea.css('z-index'));
-		signZ = parseInt(this.$signWindow.css('z-index'));
+		transcriptZ = parseInt(window.getComputedStyle(this.transcriptArea).zIndex);
+		signZ = parseInt(window.getComputedStyle(this.signWindow).zIndex);
 
 		if (transcriptZ === signZ) {
 			// the two windows are equal; restore defaults (the target window will be on top)
@@ -1665,11 +1708,11 @@ function addControlFunctions(AblePlayer) {
 		}
 		// now assign the new values
 		if (which === 'transcript') {
-			this.$transcriptArea.css('z-index',newHighZ);
-			this.$signWindow.css('z-index',newLowZ);
+			this.transcriptArea.style.zIndex = newHighZ;
+			this.signWindow.style.zIndex = newLowZ;
 		} else if (which === 'sign') {
-			this.$signWindow.css('z-index',newHighZ);
-			this.$transcriptArea.css('z-index',newLowZ);
+			this.signWindow.style.zIndex = newHighZ;
+			this.transcriptArea.style.zIndex = newLowZ;
 		}
 	};
 
@@ -1734,12 +1777,12 @@ function addControlFunctions(AblePlayer) {
 		if (this.selectedDescriptions) {
 			// updating description voice to match new description language
 			this.setDescriptionVoice();
-			if (this.$sampleDescDiv) {
+			if (this.sampleDescDiv) {
 				if (this.sampleText) {
 					for (i = 0; i < this.sampleText.length; i++) {
 						if (this.sampleText[i].lang === this.selectedDescriptions.language) {
 							this.currentSampleText = this.sampleText[i]['text'];
-							this.$sampleDescDiv.html(this.currentSampleText);
+							this.sampleDescDiv.innerHTML = this.currentSampleText;
 						}
 					}
 				}

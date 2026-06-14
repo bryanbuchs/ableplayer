@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
 
 	// Events:
 	// - startTracking(event, position)
@@ -27,65 +25,72 @@ import $ from 'jquery';
 		this.nextStep = 1;
 		this.inertiaCount = 0;
 
-		this.seekbarDiv = $(div);
+		this.seekbarDiv = div;
 
 		// Add divs for tracking amount of media loaded and played
-		this.loadedDiv = $('<div></div>');
-		this.playedDiv = $('<div></div>');
+		this.loadedDiv = document.createElement('div');
+		this.playedDiv = document.createElement('div');
 
 		// Add a seekhead
-		this.seekHead = $('<div>',{
-			'aria-orientation': 'horizontal',
-			'class': 'able-seekbar-head'
-		});
+		this.seekHead = document.createElement('div');
+		this.seekHead.setAttribute('aria-orientation', 'horizontal');
+		this.seekHead.setAttribute('class', 'able-seekbar-head');
 
-		this.seekHead.attr('tabindex', '0');
+		this.seekHead.setAttribute('tabindex', '0');
 
 		// Since head is focusable, it gets the aria roles/titles.
-		this.seekHead.attr({
-			'role': 'slider',
-			'aria-label': label,
-			'aria-valuemin': 0,
-			'aria-valuemax': max
-		});
+		this.seekHead.setAttribute('role', 'slider');
+		this.seekHead.setAttribute('aria-label', label);
+		this.seekHead.setAttribute('aria-valuemin', 0);
+		this.seekHead.setAttribute('aria-valuemax', max);
 
 		this.timeTooltipTimeoutId = null;
 		this.overTooltip = false;
-		this.timeTooltip = $('<div>');
+		this.timeTooltip = document.createElement('div');
 		this.seekbarDiv.append(this.timeTooltip);
 
-		this.timeTooltip.attr('role', 'tooltip');
-		this.timeTooltip.addClass('able-tooltip');
-		this.timeTooltip.on('mouseenter focus', function(){
+		this.timeTooltip.setAttribute('role', 'tooltip');
+		this.timeTooltip.classList.add('able-tooltip');
+		this.timeTooltip.addEventListener('mouseenter', function(){
 			thisObj.overTooltip = true;
 			clearInterval(thisObj.timeTooltipTimeoutId);
 		});
-		this.timeTooltip.on('mouseleave blur', function(){
-			thisObj.overTooltip = false;
-			$(this).hide();
+		this.timeTooltip.addEventListener('focus', function(){
+			thisObj.overTooltip = true;
+			clearInterval(thisObj.timeTooltipTimeoutId);
 		});
-		this.timeTooltip.hide();
+		this.timeTooltip.addEventListener('mouseleave', function(){
+			thisObj.overTooltip = false;
+			this.style.display = 'none';
+		});
+		this.timeTooltip.addEventListener('blur', function(){
+			thisObj.overTooltip = false;
+			this.style.display = 'none';
+		});
+		this.timeTooltip.style.display = 'none';
 
 		this.seekbarDiv.append(this.loadedDiv);
 		this.seekbarDiv.append(this.playedDiv);
 		this.seekbarDiv.append(this.seekHead);
-		this.seekbarDiv.wrap('<div></div>');
-		this.wrapperDiv = this.seekbarDiv.parent();
+		// wrap seekbarDiv in a new wrapper div
+		this.wrapperDiv = document.createElement('div');
+		this.seekbarDiv.replaceWith(this.wrapperDiv);
+		this.wrapperDiv.append(this.seekbarDiv);
 
 		if (this.skin === 'legacy') {
-			this.wrapperDiv.width( 100 );
-			this.loadedDiv.width(0);
+			this.wrapperDiv.style.width = 100 + 'px';
+			this.loadedDiv.style.width = 0 + 'px';
 		}
-		this.wrapperDiv.addClass('able-seekbar-wrapper');
-		this.loadedDiv.addClass('able-seekbar-loaded');
-		this.playedDiv.width(0);
-		this.playedDiv.addClass('able-seekbar-played');
+		this.wrapperDiv.classList.add('able-seekbar-wrapper');
+		this.loadedDiv.classList.add('able-seekbar-loaded');
+		this.playedDiv.style.width = 0 + 'px';
+		this.playedDiv.classList.add('able-seekbar-played');
 
 		// Set a default duration. User can call this dynamically if duration changes.
 		this.setDuration(max);
 
 		// handle seekHead events
-		this.seekHead.on('mouseenter mouseleave mousemove mousedown mouseup focus blur touchstart touchmove touchend', function (e) {
+		var seekHeadHandler = function (e) {
 
 			coords = thisObj.pointerEventToXY(e);
 
@@ -101,8 +106,10 @@ import $ from 'jquery';
 					thisObj.trackHeadAtPageX(coords.x);
 				}
 			} else if (e.type === 'mousedown' || e.type === 'touchstart') {
-				thisObj.startTracking('mouse', thisObj.pageXToPosition(thisObj.seekHead.offset() + (thisObj.seekHead.width() / 2)));
-				if (!thisObj.seekbarDiv.is(':focus')) {
+				// Note: faithfully preserves original behavior, where .offset() returned an
+				// object (not .left); object + number coerces to a string here as it did before.
+				thisObj.startTracking('mouse', thisObj.pageXToPosition(thisObj.seekHeadOffset() + (thisObj.seekHeadWidth() / 2)));
+				if (document.activeElement !== thisObj.seekbarDiv) {
 					thisObj.seekbarDiv.focus();
 				}
 				e.preventDefault();
@@ -114,11 +121,13 @@ import $ from 'jquery';
 			if (e.type !== 'mousemove' && e.type !== 'mousedown' && e.type !== 'mouseup' && e.type !== 'touchstart' && e.type !== 'touchend') {
 				thisObj.refreshTooltip();
 			}
+		};
+		'mouseenter mouseleave mousemove mousedown mouseup focus blur touchstart touchmove touchend'.split(' ').forEach(function (evt) {
+			thisObj.seekHead.addEventListener(evt, seekHeadHandler);
 		});
 
 		// handle seekbarDiv events
-		this.seekbarDiv.on(
-			'mouseenter mouseleave mousemove mousedown mouseup keydown keyup touchstart touchmove touchend', function (e) {
+		var seekbarHandler = function (e) {
 
 			// Don't trigger move on right click.
 			if ( e.button == 2 && e.type == 'mousedown' ) {
@@ -150,7 +159,7 @@ import $ from 'jquery';
 			} else if (e.type === 'mousedown' || e.type === 'touchstart') {
 				thisObj.startTracking('mouse', thisObj.pageXToPosition(coords.x));
 				thisObj.trackHeadAtPageX(coords.x);
-				if (!thisObj.seekHead.is(':focus')) {
+				if (document.activeElement !== thisObj.seekHead) {
 					thisObj.seekHead.focus();
 				}
 				e.preventDefault();
@@ -186,6 +195,9 @@ import $ from 'jquery';
 			if (!thisObj.overTooltip && e.type !== 'mouseup' && e.type !== 'keydown' && e.type !== 'keydown') {
 				thisObj.refreshTooltip();
 			}
+		};
+		'mouseenter mouseleave mousemove mousedown mouseup keydown keyup touchstart touchmove touchend'.split(' ').forEach(function (evt) {
+			thisObj.seekbarDiv.addEventListener(evt, seekbarHandler);
 		});
 	}
 
@@ -207,9 +219,29 @@ import $ from 'jquery';
 		}
 	};
 
+	// returns the document-relative left offset of the seekbarDiv (former jQuery .offset().left)
+	AccessibleSlider.prototype.seekbarDivOffsetLeft = function () {
+		var r = this.seekbarDiv.getBoundingClientRect();
+		return r.left + window.scrollX;
+	};
+
+	// returns the document-relative offset object of the seekHead (former jQuery .offset())
+	AccessibleSlider.prototype.seekHeadOffset = function () {
+		var r = this.seekHead.getBoundingClientRect();
+		return { top: r.top + window.scrollY, left: r.left + window.scrollX };
+	};
+
+	AccessibleSlider.prototype.seekbarDivWidth = function () {
+		return this.seekbarDiv.getBoundingClientRect().width;
+	};
+
+	AccessibleSlider.prototype.seekHeadWidth = function () {
+		return this.seekHead.getBoundingClientRect().width;
+	};
+
 	AccessibleSlider.prototype.pageXToPosition = function (pageX) {
-		var offset = pageX - this.seekbarDiv.offset().left;
-		var position = this.duration * (offset / this.seekbarDiv.width());
+		var offset = pageX - this.seekbarDivOffsetLeft();
+		var position = this.duration * (offset / this.seekbarDivWidth());
 		return this.boundPos(position);
 	};
 
@@ -221,31 +253,31 @@ import $ from 'jquery';
 		if (duration !== this.duration) {
 			this.duration = duration;
 			this.resetHeadLocation();
-			this.seekHead.attr('aria-valuemax', duration);
+			this.seekHead.setAttribute('aria-valuemax', duration);
 		}
 	};
 
 	// Set width of the legacy seekbar.
 	AccessibleSlider.prototype.setWidth = function (width) {
-		this.wrapperDiv.width(width);
+		this.wrapperDiv.style.width = width + 'px';
 		this.resizeDivs();
 		this.resetHeadLocation();
 	};
 
 	AccessibleSlider.prototype.getWidth = function () {
-		return this.wrapperDiv.width();
+		return this.wrapperDiv.getBoundingClientRect().width;
 	};
 
 	AccessibleSlider.prototype.resizeDivs = function () {
-		this.playedDiv.width( 100 * (this.position / this.duration) + '%' );
-		this.loadedDiv.width( 100 * this.buffered + '%' );
+		this.playedDiv.style.width = 100 * (this.position / this.duration) + '%';
+		this.loadedDiv.style.width = 100 * this.buffered + '%';
 	};
 
 	// Stops tracking, sets the head location to the current position.
 	AccessibleSlider.prototype.resetHeadLocation = function () {
 		var ratio = this.position / this.duration;
-		var center = this.seekbarDiv.width() * ratio;
-		this.seekHead.css('left', center - (this.seekHead.width() / 2));
+		var center = this.seekbarDivWidth() * ratio;
+		this.seekHead.style.left = (center - (this.seekHeadWidth() / 2)) + 'px';
 
 		if (this.tracking) {
 			this.stopTracking(this.position);
@@ -274,36 +306,36 @@ import $ from 'jquery';
 		if (!this.tracking) {
 			this.trackDevice = device;
 			this.tracking = true;
-			this.seekbarDiv.trigger('startTracking', [position]);
+			this.seekbarDiv.dispatchEvent(new CustomEvent('startTracking', { detail: position, bubbles: true }));
 		}
 	};
 
 	AccessibleSlider.prototype.stopTracking = function (position) {
 		this.trackDevice = null;
 		this.tracking = false;
-		this.seekbarDiv.trigger('stopTracking', [position]);
+		this.seekbarDiv.dispatchEvent(new CustomEvent('stopTracking', { detail: position, bubbles: true }));
 		this.setPosition(position, true);
 	};
 
 	AccessibleSlider.prototype.trackHeadAtPageX = function (pageX) {
 		var position = this.pageXToPosition(pageX);
-		var newLeft = pageX - this.seekbarDiv.offset().left - (this.seekHead.width() / 2);
-		newLeft = Math.max(0, Math.min(newLeft, this.seekbarDiv.width() - this.seekHead.width()));
+		var newLeft = pageX - this.seekbarDivOffsetLeft() - (this.seekHeadWidth() / 2);
+		newLeft = Math.max(0, Math.min(newLeft, this.seekbarDivWidth() - this.seekHeadWidth()));
 		this.lastTrackPosition = position;
-		this.seekHead.css('left', newLeft);
+		this.seekHead.style.left = newLeft + 'px';
 		this.reportTrackAtPosition(position);
 	};
 
 	AccessibleSlider.prototype.trackHeadAtPosition = function (position) {
 		var ratio = position / this.duration;
-		var center = this.seekbarDiv.width() * ratio;
+		var center = this.seekbarDivWidth() * ratio;
 		this.lastTrackPosition = position;
-		this.seekHead.css('left', center - (this.seekHead.width() / 2));
+		this.seekHead.style.left = (center - (this.seekHeadWidth() / 2)) + 'px';
 		this.reportTrackAtPosition(position);
 	};
 
 	AccessibleSlider.prototype.reportTrackAtPosition = function (position) {
-		this.seekbarDiv.trigger('tracking', [position]);
+		this.seekbarDiv.dispatchEvent(new CustomEvent('tracking', { detail: position, bubbles: true }));
 		this.updateAriaValues(position, true);
 	};
 
@@ -336,19 +368,18 @@ import $ from 'jquery';
 
 		/* Comment to stop live region from generating or being used. */
 		if (!this.liveAriaRegion) {
-			this.liveAriaRegion = $('<span>', {
-				'class': 'able-offscreen',
-				'aria-live': 'polite'
-			});
+			this.liveAriaRegion = document.createElement('span');
+			this.liveAriaRegion.setAttribute('class', 'able-offscreen');
+			this.liveAriaRegion.setAttribute('aria-live', 'polite');
 			this.wrapperDiv.append(this.liveAriaRegion);
 		}
-		if (updateLive && (this.liveAriaRegion.text() !== descriptionText)) {
-			this.liveAriaRegion.text(descriptionText);
+		if (updateLive && (this.liveAriaRegion.textContent !== descriptionText)) {
+			this.liveAriaRegion.textContent = descriptionText;
 		}
 
 		// Uncomment the following lines to use aria values instead of separate live region.
-		this.seekHead.attr('aria-valuetext', descriptionText);
-		this.seekHead.attr('aria-valuenow', Math.floor(position).toString());
+		this.seekHead.setAttribute('aria-valuetext', descriptionText);
+		this.seekHead.setAttribute('aria-valuenow', Math.floor(position).toString());
 	};
 
 	AccessibleSlider.prototype.trackImmediatelyTo = function (position) {
@@ -359,24 +390,24 @@ import $ from 'jquery';
 
 	AccessibleSlider.prototype.refreshTooltip = function () {
 		if (this.overHead) {
-			this.timeTooltip.show();
+			this.timeTooltip.style.display = '';
 			if (this.tracking) {
-				this.timeTooltip.text(this.positionToStr(this.lastTrackPosition));
+				this.timeTooltip.textContent = this.positionToStr(this.lastTrackPosition);
 			} else {
-				this.timeTooltip.text(this.positionToStr(this.position));
+				this.timeTooltip.textContent = this.positionToStr(this.position);
 			}
-			this.setTooltipPosition(this.seekHead.position().left + (this.seekHead.width() / 2));
+			this.setTooltipPosition(this.seekHead.offsetLeft + (this.seekHeadWidth() / 2));
 		} else if (this.overBody && this.overBodyMousePos) {
-			this.timeTooltip.show();
-			this.timeTooltip.text(this.positionToStr(this.pageXToPosition(this.overBodyMousePos.x)));
-			this.setTooltipPosition(this.overBodyMousePos.x - this.seekbarDiv.offset().left);
+			this.timeTooltip.style.display = '';
+			this.timeTooltip.textContent = this.positionToStr(this.pageXToPosition(this.overBodyMousePos.x));
+			this.setTooltipPosition(this.overBodyMousePos.x - this.seekbarDivOffsetLeft());
 		} else {
 
 			clearTimeout(this.timeTooltipTimeoutId);
 			var _this = this;
 			this.timeTooltipTimeoutId = setTimeout(function() {
 				// give user a half second move cursor over tooltip
-				_this.timeTooltip.hide();
+				_this.timeTooltip.style.display = 'none';
 			}, 500);
 		}
 	};
@@ -384,14 +415,12 @@ import $ from 'jquery';
 	AccessibleSlider.prototype.hideSliderTooltips = function () {
 		this.overHead = false;
 		this.overBody = false;
-		this.timeTooltip.hide();
+		this.timeTooltip.style.display = 'none';
 	};
 
 	AccessibleSlider.prototype.setTooltipPosition = function (x) {
-		this.timeTooltip.css({
-			left: x - (this.timeTooltip.width() / 2) - 10,
-			bottom: this.seekHead.height()
-		});
+		this.timeTooltip.style.left = (x - (this.timeTooltip.getBoundingClientRect().width / 2) - 10) + 'px';
+		this.timeTooltip.style.bottom = this.seekHead.getBoundingClientRect().height + 'px';
 	};
 
 	AccessibleSlider.prototype.positionToStr = function (seconds) {
@@ -420,7 +449,7 @@ import $ from 'jquery';
 		// for touch events, it's a bit more complicated
 		var out = {x:0, y:0};
 		if (e.type == 'touchstart' || e.type == 'touchmove' || e.type == 'touchend' || e.type == 'touchcancel') {
-			var touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
+			var touch = e.touches[0] || e.changedTouches[0];
 			out.x = touch.pageX;
 			out.y = touch.pageY;
 		} else if (e.type == 'mousedown' || e.type == 'mouseup' || e.type == 'mousemove' || e.type == 'mouseover'|| e.type=='mouseout' || e.type=='mouseenter' || e.type=='mouseleave') {

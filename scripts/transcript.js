@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
 function addTranscriptFunctions(AblePlayer) {
   AblePlayer.prototype.setupTranscript = function () {
     var deferred = new this.defer();
@@ -37,86 +35,89 @@ function addTranscriptFunctions(AblePlayer) {
   };
 
   AblePlayer.prototype.injectTranscriptArea = function () {
-    var $autoScrollLabel,
-      $autoScrollContainer,
-      $languageSelectWrapper,
-      $languageSelectLabel,
+    var autoScrollLabel,
+      autoScrollContainer,
+      languageSelectWrapper,
+      languageSelectLabel,
       i,
-      $option;
+      option;
 
-    this.$transcriptArea = $("<div>", {
+    this.transcriptArea = this.createEl("div", {
       class: "able-transcript-area",
       role: "dialog",
       "aria-label": this.translate( 'transcriptTitle', 'Transcript' ),
     });
 
-    this.$transcriptToolbar = $("<div>", {
+    this.transcriptToolbar = this.createEl("div", {
       class: "able-window-toolbar able-" + this.toolbarIconColor + "-controls",
     });
 
-    this.$transcriptDiv = $("<div>", {
+    this.transcriptDiv = this.createEl("div", {
       class: "able-transcript",
     });
 
     // Transcript toolbar content
 
     // Add auto Scroll checkbox
-    this.$autoScrollTranscriptCheckbox = $("<input>", {
+    this.autoScrollTranscriptCheckbox = this.createEl("input", {
       id: "autoscroll-transcript-checkbox-" + this.mediaId,
       type: "checkbox",
     });
-    $autoScrollLabel = $("<label>", {
+    autoScrollLabel = this.createEl("label", {
       for: "autoscroll-transcript-checkbox-" + this.mediaId,
-    }).text( this.translate( 'autoScroll', 'Auto scroll' ) );
-	$autoScrollContainer = $( '<div>', {
+      text: this.translate( 'autoScroll', 'Auto scroll' ),
+    });
+	autoScrollContainer = this.createEl( 'div', {
 		'class': 'autoscroll-transcript'
 	});
-	$autoScrollContainer.append(
-		$autoScrollLabel,
-		this.$autoScrollTranscriptCheckbox
+	autoScrollContainer.append(
+		autoScrollLabel,
+		this.autoScrollTranscriptCheckbox
 	);
-    this.$transcriptToolbar.append( $autoScrollContainer );
+    this.transcriptToolbar.append( autoScrollContainer );
 
     // Add field for selecting a transcript language
     // Only necessary if there is more than one language
     if (this.captions.length > 1) {
-      $languageSelectWrapper = $("<div>", {
+      languageSelectWrapper = this.createEl("div", {
         class: "transcript-language-select-wrapper",
       });
-      $languageSelectLabel = $("<label>", {
+      languageSelectLabel = this.createEl("label", {
         for: "transcript-language-select-" + this.mediaId,
-      }).text( this.translate( 'language', 'Language' ) );
-      this.$transcriptLanguageSelect = $("<select>", {
+        text: this.translate( 'language', 'Language' ),
+      });
+      this.transcriptLanguageSelect = this.createEl("select", {
         id: "transcript-language-select-" + this.mediaId,
       });
       for (i = 0; i < this.captions.length; i++) {
-        $option = $("<option></option>", {
+        option = this.createEl("option", {
           value: this.captions[i]["language"],
           lang: this.captions[i]["language"],
-        }).text(this.captions[i]["label"]);
+          text: this.captions[i]["label"],
+        });
         if (this.captions[i]["def"]) {
-          $option.prop("selected", true);
+          option.selected = true;
         }
-        this.$transcriptLanguageSelect.append($option);
+        this.transcriptLanguageSelect.append(option);
       }
     }
-    if ($languageSelectWrapper) {
-      $languageSelectWrapper.append(
-        $languageSelectLabel,
-        this.$transcriptLanguageSelect
+    if (languageSelectWrapper) {
+      languageSelectWrapper.append(
+        languageSelectLabel,
+        this.transcriptLanguageSelect
       );
-      this.$transcriptToolbar.append($languageSelectWrapper);
+      this.transcriptToolbar.append(languageSelectWrapper);
     }
-    this.$transcriptArea.append(this.$transcriptToolbar, this.$transcriptDiv);
+    this.transcriptArea.append(this.transcriptToolbar, this.transcriptDiv);
 
     // If client has provided separate transcript location, put it there.
     // Otherwise append it to the body
     if (this.transcriptDivLocation) {
-	  this.$transcriptArea.removeAttr( 'role' );
-	  this.$transcriptArea.removeAttr( 'aria-label' );
-      $("#" + this.transcriptDivLocation).append(this.$transcriptArea);
+	  this.transcriptArea.removeAttribute( 'role' );
+	  this.transcriptArea.removeAttribute( 'aria-label' );
+      document.getElementById(this.transcriptDivLocation).append(this.transcriptArea);
     } else {
-      this.$ableWrapper.append(this.$transcriptArea);
+      this.ableWrapper.append(this.transcriptArea);
     }
 
     // make it draggable (popup only; NOT external transcript)
@@ -133,41 +134,42 @@ function addTranscriptFunctions(AblePlayer) {
 
     // If client has provided separate transcript location, override user's preference for hiding transcript
     if (!this.prefTranscript && !this.transcriptDivLocation) {
-      this.$transcriptArea.hide();
+      this.transcriptArea.style.display = 'none';
     }
   };
 
   AblePlayer.prototype.addTranscriptAreaEvents = function () {
     var thisObj = this;
 
-    this.$autoScrollTranscriptCheckbox.on( 'click', function () {
+    this.autoScrollTranscriptCheckbox.addEventListener( 'click', function () {
       thisObj.handleTranscriptLockToggle(
-        thisObj.$autoScrollTranscriptCheckbox.prop("checked")
+        thisObj.autoScrollTranscriptCheckbox.checked
       );
     });
 
-    this.$transcriptDiv.on(
-      "mousewheel DOMMouseScroll click scroll",
-      function (e) {
-        // Propagation is stopped in transcript click handler, so clicks are on the scrollbar
-        // or outside of a clickable span.
-        if (!thisObj.scrollingTranscript) {
-          thisObj.autoScrollTranscript = false;
-          thisObj.refreshControls("transcript");
-        }
-        thisObj.scrollingTranscript = false;
+    var transcriptScrollHandler = function () {
+      // Propagation is stopped in transcript click handler, so clicks are on the scrollbar
+      // or outside of a clickable span.
+      if (!thisObj.scrollingTranscript) {
+        thisObj.autoScrollTranscript = false;
+        thisObj.refreshControls("transcript");
       }
-    );
+      thisObj.scrollingTranscript = false;
+    };
+    this.transcriptDiv.addEventListener("mousewheel", transcriptScrollHandler);
+    this.transcriptDiv.addEventListener("DOMMouseScroll", transcriptScrollHandler);
+    this.transcriptDiv.addEventListener("click", transcriptScrollHandler);
+    this.transcriptDiv.addEventListener("scroll", transcriptScrollHandler);
 
-    if (typeof this.$transcriptLanguageSelect !== "undefined") {
-      this.$transcriptLanguageSelect.on('click', function (e) {
+    if (typeof this.transcriptLanguageSelect !== "undefined") {
+      this.transcriptLanguageSelect.addEventListener('click', function (e) {
         // execute default behavior
         // prevent propagation of mouse event to toolbar or window
         e.stopPropagation();
       });
 
-      this.$transcriptLanguageSelect.on("change", function () {
-        var language = thisObj.$transcriptLanguageSelect.val();
+      this.transcriptLanguageSelect.addEventListener("change", function () {
+        var language = thisObj.transcriptLanguageSelect.value;
 
         thisObj.syncTrackLanguages("transcript", language);
       });
@@ -179,20 +181,20 @@ function addTranscriptFunctions(AblePlayer) {
     // return true or false
     // in the process, define all the needed variables and properties
 
-    if ($("#" + this.transcriptSrc).length) {
-      this.$transcriptArea = $("#" + this.transcriptSrc);
-      if (this.$transcriptArea.find(".able-window-toolbar").length) {
-        this.$transcriptToolbar = this.$transcriptArea
-          .find(".able-window-toolbar")
-          .eq(0);
-        if (this.$transcriptArea.find(".able-transcript").length) {
-          this.$transcriptDiv = this.$transcriptArea
-            .find(".able-transcript")
-            .eq(0);
-          if (this.$transcriptArea.find(".able-transcript-seekpoint").length) {
-            this.$transcriptSeekpoints = this.$transcriptArea.find(
-              ".able-transcript-seekpoint"
-            );
+    var transcriptArea = document.getElementById(this.transcriptSrc);
+    if (transcriptArea) {
+      this.transcriptArea = transcriptArea;
+      var toolbar = this.transcriptArea.querySelector(".able-window-toolbar");
+      if (toolbar) {
+        this.transcriptToolbar = toolbar;
+        var transcriptDiv = this.transcriptArea.querySelector(".able-transcript");
+        if (transcriptDiv) {
+          this.transcriptDiv = transcriptDiv;
+          var seekpoints = Array.from(
+            this.transcriptArea.querySelectorAll(".able-transcript-seekpoint")
+          );
+          if (seekpoints.length) {
+            this.transcriptSeekpoints = seekpoints;
             return true;
           }
         }
@@ -202,21 +204,22 @@ function addTranscriptFunctions(AblePlayer) {
   };
 
   AblePlayer.prototype.setupManualTranscript = function () {
-    var $autoScrollInput, $autoScrollLabel;
+    var autoScrollInput, autoScrollLabel;
 
-    $autoScrollInput = $("<input>", {
+    autoScrollInput = this.createEl("input", {
       id: "autoscroll-transcript-checkbox-" + this.mediaId,
       type: "checkbox",
     });
-    $autoScrollLabel = $("<label>", {
+    autoScrollLabel = this.createEl("label", {
       for: "autoscroll-transcript-checkbox-" + this.mediaId,
-    }).text( this.translate( 'autoScroll', 'Auto scroll' ) );
+      text: this.translate( 'autoScroll', 'Auto scroll' ),
+    });
 
     // Add an auto-scroll checkbox to the toolbar.
-    this.$autoScrollTranscriptCheckbox = $autoScrollInput;
-    this.$transcriptToolbar.append(
-      $autoScrollLabel,
-      this.$autoScrollTranscriptCheckbox
+    this.autoScrollTranscriptCheckbox = autoScrollInput;
+    this.transcriptToolbar.append(
+      autoScrollLabel,
+      this.autoScrollTranscriptCheckbox
     );
   };
 
@@ -224,7 +227,7 @@ function addTranscriptFunctions(AblePlayer) {
     if (!this.transcriptType) {
       return;
     }
-    if (this.playerCreated && !this.$transcriptArea) {
+    if (this.playerCreated && !this.transcriptArea) {
       return;
     }
     if (this.transcriptType === "external" || this.transcriptType === "popup") {
@@ -283,15 +286,20 @@ function addTranscriptFunctions(AblePlayer) {
         captions || [],
         descriptions || []
       );
-      this.$transcriptDiv.html(div);
+      // replace transcript contents with the generated container node
+      this.transcriptDiv.replaceChildren(div);
       // reset transcript selected <option> to this.transcriptLang
-      if (this.$transcriptLanguageSelect) {
-        this.$transcriptLanguageSelect
-          .find("option:selected")
-          .prop("selected", false);
-        this.$transcriptLanguageSelect
-          .find("option[lang=" + this.transcriptLang + "]")
-          .prop("selected", true);
+      if (this.transcriptLanguageSelect) {
+        var selectedOption = this.transcriptLanguageSelect.querySelector("option:checked");
+        if (selectedOption) {
+          selectedOption.selected = false;
+        }
+        var langOption = this.transcriptLanguageSelect.querySelector(
+          "option[lang=" + this.transcriptLang + "]"
+        );
+        if (langOption) {
+          langOption.selected = true;
+        }
       }
     }
 
@@ -299,32 +307,36 @@ function addTranscriptFunctions(AblePlayer) {
 
     // Make transcript tabbable if preference is turned on.
     if (this.prefTabbable === 1) {
-      this.$transcriptDiv
-        .find("span.able-transcript-seekpoint")
-        .attr("tabindex", "0");
+      this.transcriptDiv
+        .querySelectorAll("span.able-transcript-seekpoint")
+        .forEach(function (span) {
+          span.setAttribute("tabindex", "0");
+        });
     }
 
     // handle clicks on text within transcript
     // Note: This event listeners handles clicks only, not keydown events
     // Pressing Enter on an element that is not natively clickable does NOT trigger click()
     // Keydown events are handled elsehwere, both globally (ableplayer-base.js) and locally (event.js)
-    if (this.$transcriptArea.length > 0) {
-      this.$transcriptArea
-        .find("span.able-transcript-seekpoint")
-        .on( 'click', function (e) {
-          thisObj.seekTrigger = "transcript";
-          var spanStart = parseFloat($(this).attr("data-start"));
-          // Add a tiny amount so that we're inside the span.
-          spanStart += 0.01;
-          // Each click within the transcript triggers two click events (not sure why)
-          // this.seekingFromTranscript is a stopgab to prevent two calls to SeekTo()
-          if (!thisObj.seekingFromTranscript) {
-            thisObj.seekingFromTranscript = true;
-            thisObj.seekTo(spanStart);
-          } else {
-            // don't seek a second time, but do reset var
-            thisObj.seekingFromTranscript = false;
-          }
+    if (this.transcriptArea) {
+      this.transcriptArea
+        .querySelectorAll("span.able-transcript-seekpoint")
+        .forEach(function (span) {
+          span.addEventListener( 'click', function () {
+            thisObj.seekTrigger = "transcript";
+            var spanStart = parseFloat(this.getAttribute("data-start"));
+            // Add a tiny amount so that we're inside the span.
+            spanStart += 0.01;
+            // Each click within the transcript triggers two click events (not sure why)
+            // this.seekingFromTranscript is a stopgab to prevent two calls to SeekTo()
+            if (!thisObj.seekingFromTranscript) {
+              thisObj.seekingFromTranscript = true;
+              thisObj.seekTo(spanStart);
+            } else {
+              // don't seek a second time, but do reset var
+              thisObj.seekingFromTranscript = false;
+            }
+          });
         });
     }
   };
@@ -342,35 +354,46 @@ function addTranscriptFunctions(AblePlayer) {
     currentTime = parseFloat(currentTime);
 
     // Highlight the current transcript item.
-    this.$transcriptArea
-      .find("span.able-transcript-seekpoint")
-      .each(function () {
-        start = parseFloat($(this).attr("data-start"));
-        end = parseFloat($(this).attr("data-end"));
-        // be sure this isn't a chapter (don't highlight chapter headings)
-        if ($(this).parent().hasClass("able-transcript-chapter-heading")) {
-          isChapterHeading = true;
-        } else {
-          isChapterHeading = false;
-        }
+    var seekpoints = Array.from(
+      this.transcriptArea.querySelectorAll("span.able-transcript-seekpoint")
+    );
+    for (var s = 0; s < seekpoints.length; s++) {
+      var span = seekpoints[s];
+      start = parseFloat(span.getAttribute("data-start"));
+      end = parseFloat(span.getAttribute("data-end"));
+      // be sure this isn't a chapter (don't highlight chapter headings)
+      if (
+        span.parentElement &&
+        span.parentElement.classList.contains("able-transcript-chapter-heading")
+      ) {
+        isChapterHeading = true;
+      } else {
+        isChapterHeading = false;
+      }
 
-        if (currentTime >= start && currentTime <= end && !isChapterHeading) {
-          // If this item isn't already highlighted, it should be
-          if (!$(this).hasClass("able-highlight")) {
-            // remove all previous highlights before adding one to current span
-            thisObj.$transcriptArea
-              .find(".able-highlight")
-              .removeClass("able-highlight");
-            $(this).addClass("able-highlight");
-            thisObj.movingHighlight = true;
-          }
-          return false;
+      if (currentTime >= start && currentTime <= end && !isChapterHeading) {
+        // If this item isn't already highlighted, it should be
+        if (!span.classList.contains("able-highlight")) {
+          // remove all previous highlights before adding one to current span
+          thisObj.transcriptArea
+            .querySelectorAll(".able-highlight")
+            .forEach(function (el) {
+              el.classList.remove("able-highlight");
+            });
+          span.classList.add("able-highlight");
+          thisObj.movingHighlight = true;
         }
-      });
-    thisObj.currentHighlight = thisObj.$transcriptArea.find(".able-highlight");
-    if (thisObj.currentHighlight.length === 0) {
+        break;
+      }
+    }
+    var highlighted = Array.from(
+      thisObj.transcriptArea.querySelectorAll(".able-highlight")
+    );
+    if (highlighted.length === 0) {
       // Nothing highlighted.
       thisObj.currentHighlight = null;
+    } else {
+      thisObj.currentHighlight = highlighted;
     }
   };
 
@@ -381,11 +404,11 @@ function addTranscriptFunctions(AblePlayer) {
   ) {
     var thisObj = this;
 
-    var $main = $('<div class="able-transcript-container"></div>');
+    var main = this.createEl("div", { class: "able-transcript-container" });
     var transcriptTitle, firstStart;
 
     // set language for transcript container
-    $main.attr("lang", this.transcriptLang);
+    main.setAttribute("lang", this.transcriptLang);
 
     if (typeof this.transcriptTitle !== "undefined") {
       transcriptTitle = this.transcriptTitle;
@@ -408,21 +431,19 @@ function addTranscriptFunctions(AblePlayer) {
       } else {
         transcriptHeading = "div";
       }
-      var $transcriptHeadingTag = $("<" + transcriptHeading + ">");
-      $transcriptHeadingTag.addClass("able-transcript-heading");
+      var transcriptHeadingTag = this.createEl(transcriptHeading);
+      transcriptHeadingTag.classList.add("able-transcript-heading");
       if (headingNumber > 6) {
-        $transcriptHeadingTag.attr({
-          role: "heading",
-          "aria-level": headingNumber,
-        });
+        transcriptHeadingTag.setAttribute("role", "heading");
+        transcriptHeadingTag.setAttribute("aria-level", headingNumber);
       }
-      $transcriptHeadingTag.text(transcriptTitle);
+      transcriptHeadingTag.textContent = transcriptTitle;
 
       // set language of transcript heading to language of player
       // this is independent of language of transcript
-      $transcriptHeadingTag.attr("lang", this.lang);
+      transcriptHeadingTag.setAttribute("lang", this.lang);
 
-      $main.append($transcriptHeadingTag);
+      main.append(transcriptHeadingTag);
     }
 
     var nextChapter = 0;
@@ -437,14 +458,12 @@ function addTranscriptFunctions(AblePlayer) {
         chapterHeading = "div";
       }
 
-      var $chapterHeadingTag = $("<" + chapterHeading + ">", {
+      var chapterHeadingTag = thisObj.createEl(chapterHeading, {
         class: "able-transcript-chapter-heading",
       });
       if (chapterHeadingNumber > 6) {
-        $chapterHeadingTag.attr({
-          role: "heading",
-          "aria-level": chapterHeadingNumber,
-        });
+        chapterHeadingTag.setAttribute("role", "heading");
+        chapterHeadingTag.setAttribute("aria-level", chapterHeadingNumber);
       }
 
       var flattenComponentForChapter = function (comp) {
@@ -461,32 +480,32 @@ function addTranscriptFunctions(AblePlayer) {
         return result;
       };
 
-      var $chapSpan = $("<span>", {
+      var chapSpan = thisObj.createEl("span", {
         class: "able-transcript-seekpoint",
       });
       for (var i = 0; i < chap.components.children.length; i++) {
         var results = flattenComponentForChapter(chap.components.children[i]);
         for (var jj = 0; jj < results.length; jj++) {
-          $chapSpan.append(results[jj]);
+          chapSpan.append(results[jj]);
         }
       }
-      $chapSpan.attr("data-start", chap.start.toString());
-      $chapSpan.attr("data-end", chap.end.toString());
-      $chapterHeadingTag.append($chapSpan);
+      chapSpan.setAttribute("data-start", chap.start.toString());
+      chapSpan.setAttribute("data-end", chap.end.toString());
+      chapterHeadingTag.append(chapSpan);
 
-      div.append($chapterHeadingTag);
+      div.append(chapterHeadingTag);
     };
 
     var addDescription = function (div, desc) {
-      var $descDiv = $("<div>", {
+      var descDiv = thisObj.createEl("div", {
         class: "able-transcript-desc",
       });
-      var $descHiddenSpan = $("<span>", {
+      var descHiddenSpan = thisObj.createEl("span", {
         class: "able-hidden",
       });
-      $descHiddenSpan.attr("lang", thisObj.lang);
-      $descHiddenSpan.text( thisObj.translate( 'prefHeadingDescription', 'Audio description' ) + ": ");
-      $descDiv.append($descHiddenSpan);
+      descHiddenSpan.setAttribute("lang", thisObj.lang);
+      descHiddenSpan.textContent = thisObj.translate( 'prefHeadingDescription', 'Audio description' ) + ": ";
+      descDiv.append(descHiddenSpan);
 
       var flattenComponentForDescription = function (comp) {
         var result = [];
@@ -502,7 +521,7 @@ function addTranscriptFunctions(AblePlayer) {
         return result;
       };
 
-      var $descSpan = $("<span>", {
+      var descSpan = thisObj.createEl("span", {
         class: "able-transcript-seekpoint",
       });
       for (var i = 0; i < desc.components.children.length; i++) {
@@ -510,18 +529,18 @@ function addTranscriptFunctions(AblePlayer) {
           desc.components.children[i]
         );
         for (var jj = 0; jj < results.length; jj++) {
-          $descSpan.append(results[jj]);
+          descSpan.append(results[jj]);
         }
       }
-      $descSpan.attr("data-start", desc.start.toString());
-      $descSpan.attr("data-end", desc.end.toString());
-      $descDiv.append($descSpan);
+      descSpan.setAttribute("data-start", desc.start.toString());
+      descSpan.setAttribute("data-end", desc.end.toString());
+      descDiv.append(descSpan);
 
-      div.append($descDiv);
+      div.append(descDiv);
     };
 
     var addCaption = function (div, cap) {
-      var $capSpan = $("<span>", {
+      var capSpan = thisObj.createEl("span", {
         class: "able-transcript-seekpoint able-transcript-caption",
       });
 
@@ -592,13 +611,13 @@ function addTranscriptFunctions(AblePlayer) {
         if (comp.type === "string") {
           result = result.concat(flattenString(comp.value));
         } else if (comp.type === "v") {
-          var $vSpan = $("<span>", {
+          var vSpan = thisObj.createEl("span", {
             class: "able-unspoken",
           });
           // don't display "title=" when rendering the voice tag title in the transcript
           comp.value = comp.value.replace(/^title="|"$/g, "");
-          $vSpan.text("(" + comp.value + ")");
-          result.push($vSpan);
+          vSpan.textContent = "(" + comp.value + ")";
+          result.push(vSpan);
           for (var i = 0; i < comp.children.length; i++) {
             let subResults = flattenComponentForCaption(comp.children[i]);
             for (let jj = 0; jj < subResults.length; jj++) {
@@ -606,20 +625,20 @@ function addTranscriptFunctions(AblePlayer) {
             }
           }
         } else if (comp.type === "b" || comp.type === "i") {
-          let $tag;
+          let tag;
           if (comp.type === "b") {
-            $tag = $("<strong>");
+            tag = thisObj.createEl("strong");
           } else if (comp.type === "i") {
-            $tag = $("<em>");
+            tag = thisObj.createEl("em");
           }
           for (i = 0; i < comp.children.length; i++) {
             let subResults = flattenComponentForCaption(comp.children[i]);
             for (let jj = 0; jj < subResults.length; jj++) {
-              $tag.append(subResults[jj]);
+              tag.append(subResults[jj]);
             }
           }
           if (comp.type === "b" || comp.type == "i") {
-            result.push($tag);
+            result.push(tag);
           }
         } else {
           for (i = 0; i < comp.children.length; i++) {
@@ -652,13 +671,17 @@ function addTranscriptFunctions(AblePlayer) {
               // just add a space between captions
               result += " ";
             }
+            // string fragments may contain HTML markup (e.g., <br>, silent spans),
+            // so insert as HTML to preserve prior jQuery .append(string) behavior
+            capSpan.insertAdjacentHTML("beforeend", result);
+          } else {
+            capSpan.append(result);
           }
-          $capSpan.append(result);
         }
       }
-      $capSpan.attr("data-start", cap.start.toString());
-      $capSpan.attr("data-end", cap.end.toString());
-      div.append($capSpan);
+      capSpan.setAttribute("data-start", cap.start.toString());
+      capSpan.setAttribute("data-end", cap.end.toString());
+      div.append(capSpan);
       div.append(" \n");
     };
 
@@ -708,69 +731,77 @@ function addTranscriptFunctions(AblePlayer) {
           typeof chapters[nextChapter] !== "undefined" &&
           chapters[nextChapter].start === firstStart
         ) {
-          addChapter($main, chapters[nextChapter]);
+          addChapter(main, chapters[nextChapter]);
           nextChapter += 1;
         } else if (
           typeof descriptions[nextDesc] !== "undefined" &&
           descriptions[nextDesc].start === firstStart
         ) {
-          addDescription($main, descriptions[nextDesc]);
+          addDescription(main, descriptions[nextDesc]);
           nextDesc += 1;
         } else {
-          addCaption($main, captions[nextCap]);
+          addCaption(main, captions[nextCap]);
           nextCap += 1;
         }
       } else {
         if (nextChapter < chapters.length) {
-          addChapter($main, chapters[nextChapter]);
+          addChapter(main, chapters[nextChapter]);
           nextChapter += 1;
         } else if (nextDesc < descriptions.length) {
-          addDescription($main, descriptions[nextDesc]);
+          addDescription(main, descriptions[nextDesc]);
           nextDesc += 1;
         } else if (nextCap < captions.length) {
-          addCaption($main, captions[nextCap]);
+          addCaption(main, captions[nextCap]);
           nextCap += 1;
         }
       }
     }
     // organize transcript into blocks using [] and () as starting points
-    var $components = $main.children();
+    var components = Array.from(main.children);
     var spanCount = 0;
-    $components.each(function () {
-      if ($(this).hasClass("able-transcript-caption")) {
+    components.forEach(function (component) {
+      if (component.classList.contains("able-transcript-caption")) {
         if (
-          $(this).text().indexOf("[") !== -1 ||
-          $(this).text().indexOf("(") !== -1
+          component.textContent.indexOf("[") !== -1 ||
+          component.textContent.indexOf("(") !== -1
         ) {
           // this caption includes a bracket or parenth. Start a new block
           // close the previous block first
           if (spanCount > 0) {
-            $main = wrapTranscriptBlocks( $main );
+            main = wrapTranscriptBlocks( main );
             spanCount = 0;
           }
         }
-        $(this).addClass("able-block-temp");
+        component.classList.add("able-block-temp");
         spanCount++;
       } else {
         // this is not a caption. Close the caption block
         if (spanCount > 0) {
-          $main = wrapTranscriptBlocks( $main );
+          main = wrapTranscriptBlocks( main );
           spanCount = 0;
         }
       }
     });
 	// Close out remaining temp blocks.
-	$main = wrapTranscriptBlocks( $main );
+	main = wrapTranscriptBlocks( main );
 
-    return $main;
+    return main;
   };
 
-  var wrapTranscriptBlocks = function( $main ) {
-	$main.find(".able-block-temp")
-		.removeClass("able-block-temp")
-		.wrapAll('<div class="able-transcript-block"></div>');
+  var wrapTranscriptBlocks = function( main ) {
+	var tempEls = Array.from(main.querySelectorAll(".able-block-temp"));
+	if (tempEls.length) {
+		var block = document.createElement("div");
+		block.className = "able-transcript-block";
+		// insert the wrapper where the first temp element currently sits
+		tempEls[0].before(block);
+		tempEls.forEach(function (el) {
+			el.classList.remove("able-block-temp");
+			block.append(el);
+		});
+	}
 
-	return $main;
+	return main;
   }
 }
 

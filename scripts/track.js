@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import validate from './validate';
 
 function addTrackFunctions(AblePlayer) {
@@ -16,7 +15,7 @@ function addTrackFunctions(AblePlayer) {
 
     loadingPromises = [];
 
-    if ($("#able-vts").length) {
+    if (document.getElementById('able-vts')) {
       // Page includes a container for a VTS instance
       this.vtsTracks = [];
       this.hasVts = true;
@@ -84,7 +83,7 @@ function addTrackFunctions(AblePlayer) {
     if (thisObj.usingYouTubeCaptions || thisObj.usingVimeoCaptions) {
       deferred.resolve();
     } else {
-      $.when.apply($, loadingPromises).then(function () {
+      Promise.all(loadingPromises).then(function () {
         deferred.resolve();
       });
     }
@@ -110,7 +109,7 @@ function addTrackFunctions(AblePlayer) {
     deferred = new this.defer();
     promise = deferred.promise();
 
-    this.$tracks = this.$media.find('track');
+    this.trackEls = Array.from(this.media.querySelectorAll('track'));
     this.tracks = []; // only includes tracks that do NOT have data-desc
     this.altTracks = []; // only includes tracks that DO have data-desc
 
@@ -123,30 +122,30 @@ function addTrackFunctions(AblePlayer) {
     this.hasCaptionsTrack = false; // will change to true if one or more tracks has kind="captions"
     this.hasDescTracks = false; // will change to true if one or more tracks has data-desc
 
-    if (this.$tracks.length) {
+    if (this.trackEls.length) {
       this.usingYouTubeCaptions = false;
       // create object from HTML5 tracks
-      this.$tracks.each(function (index, element) {
-        if ($(this).attr('kind') === 'captions') {
+      this.trackEls.forEach(function (element, index) {
+        if (element.getAttribute('kind') === 'captions') {
           thisObj.hasCaptionsTrack = true;
-        } else if ($(this).attr('kind') === 'descriptions') {
+        } else if (element.getAttribute('kind') === 'descriptions') {
           thisObj.hasClosedDesc = true;
         }
 
         // srcLang should always be included with <track>, but HTML5 spec doesn't require it
         // if not provided, assume track is the same language as the default player language
-        if ($(this).attr('srclang')) {
-          trackLang = $(this).attr('srclang');
+        if (element.getAttribute('srclang')) {
+          trackLang = element.getAttribute('srclang');
         } else {
           trackLang = thisObj.lang;
         }
-        if ($(this).attr('label')) {
-          trackLabel = $(this).attr('label');
+        if (element.getAttribute('label')) {
+          trackLabel = element.getAttribute('label');
         } else {
           trackLabel = thisObj.getLanguageName(trackLang);
         }
 
-        if (typeof $(this).attr('default') !== 'undefined' && !hasDefault) {
+        if (element.hasAttribute('default') && !hasDefault) {
           isDefault = true;
           hasDefault = true;
         } else if (trackLang === thisObj.lang) {
@@ -163,7 +162,7 @@ function addTrackFunctions(AblePlayer) {
           thisObj.captionLang = trackLang;
         }
 
-        if ($(this).data("desc") !== undefined) {
+        if (thisObj.getData(element, "desc") !== undefined) {
           forDesc = true;
           thisObj.hasDescTracks = true;
         } else {
@@ -171,8 +170,8 @@ function addTrackFunctions(AblePlayer) {
         }
         if (forDesc) {
           thisObj.altTracks.push({
-            kind: $(this).attr('kind'),
-            src: $(this).attr('src'),
+            kind: element.getAttribute('kind'),
+            src: element.getAttribute('src'),
             language: trackLang,
             label: trackLabel,
             def: isDefault,
@@ -180,8 +179,8 @@ function addTrackFunctions(AblePlayer) {
           });
         } else {
           thisObj.tracks.push({
-            kind: $(this).attr('kind'),
-            src: $(this).attr('src'),
+            kind: element.getAttribute('kind'),
+            src: element.getAttribute('src'),
             language: trackLang,
             label: trackLabel,
             def: isDefault,
@@ -189,7 +188,7 @@ function addTrackFunctions(AblePlayer) {
           });
         }
 
-        if (index == thisObj.$tracks.length - 1) {
+        if (index == thisObj.trackEls.length - 1) {
           // This is the last track.
           if (!hasDefault) {
             if (hasTrackInDefLang) {
@@ -213,19 +212,21 @@ function addTrackFunctions(AblePlayer) {
           // This data has already been saved to this.tracks
           // and some browsers will display the default captions,
           // despite all standard efforts to suppress them
-          thisObj.$media.find("track").removeAttr("default");
+          Array.from(thisObj.media.querySelectorAll("track")).forEach(function (trackEl) {
+            trackEl.removeAttribute("default");
+          });
         }
       });
     }
-    if (!this.$tracks.length || !this.hasCaptionsTrack) {
+    if (!this.trackEls.length || !this.hasCaptionsTrack) {
       // this media has no track elements
       // if this is a youtube or vimeo player, check there for captions/subtitles
       if (this.player === 'youtube') {
         this.getYouTubeCaptionTracks().then(function () {
           if (thisObj.hasCaptions) {
             thisObj.usingYouTubeCaptions = true;
-            if (thisObj.$captionsWrapper) {
-              thisObj.$captionsWrapper.remove();
+            if (thisObj.captionsWrapper) {
+              thisObj.captionsWrapper.remove();
             }
           }
           deferred.resolve();
@@ -234,8 +235,8 @@ function addTrackFunctions(AblePlayer) {
         this.getVimeoCaptionTracks().then(function () {
           if (thisObj.hasCaptions) {
             thisObj.usingVimeoCaptions = true;
-            if (thisObj.$captionsWrapper) {
-              thisObj.$captionsWrapper.remove();
+            if (thisObj.captionsWrapper) {
+              thisObj.captionsWrapper.remove();
             }
           }
           deferred.resolve();
@@ -244,8 +245,8 @@ function addTrackFunctions(AblePlayer) {
         // this is neither YouTube nor Vimeo
         // there just ain't no tracks (captions or otherwise)
         this.hasCaptions = false;
-        if (thisObj.$captionsWrapper) {
-          thisObj.$captionsWrapper.remove();
+        if (thisObj.captionsWrapper) {
+          thisObj.captionsWrapper.remove();
         }
         deferred.resolve();
       }
@@ -325,30 +326,31 @@ function addTrackFunctions(AblePlayer) {
       }
     }
     if (this.mediaType === 'audio' && this.captionsOn) {
-      this.$captionsContainer.removeClass('captions-off');
+      this.captionsContainer.classList.remove('captions-off');
     }
 
     if (
-      !this.$captionsWrapper ||
-      (this.$captionsWrapper &&
-        !$.contains(this.$ableDiv[0], this.$captionsWrapper[0]))
+      !this.captionsWrapper ||
+      (this.captionsWrapper &&
+        !this.ableDiv.contains(this.captionsWrapper))
     ) {
       // captionsWrapper either doesn't exist, or exists in an orphaned state
       // Either way, it needs to be rebuilt...
-      this.$captionsDiv = $('<div>', {
+      this.captionsDiv = this.createEl('div', {
         class: "able-captions",
       });
-      this.$captionsWrapper = $('<div>', {
+      this.captionsWrapper = this.createEl('div', {
         class: 'able-captions-wrapper',
         'aria-hidden': 'true',
-      }).hide();
+      });
+      this.captionsWrapper.style.display = 'none';
       if (this.prefCaptionsPosition === 'below') {
-        this.$captionsWrapper.addClass('able-captions-below');
+        this.captionsWrapper.classList.add('able-captions-below');
       } else {
-        this.$captionsWrapper.addClass('able-captions-overlay');
+        this.captionsWrapper.classList.add('able-captions-overlay');
       }
-      this.$captionsWrapper.append(this.$captionsDiv);
-      this.$captionsContainer.append(this.$captionsWrapper);
+      this.captionsWrapper.append(this.captionsDiv);
+      this.captionsContainer.append(this.captionsWrapper);
     }
   };
 
@@ -381,9 +383,9 @@ function addTrackFunctions(AblePlayer) {
       // Metadata is only supported if data-meta-div is provided
       // The player does not display metadata internally
       if (this.metaDiv) {
-        if ($('#' + this.metaDiv)) {
+        this.metaDivEl = document.getElementById(this.metaDiv);
+        if (this.metaDivEl) {
           // container exists
-          this.$metaDiv = $('#' + this.metaDiv);
           this.hasMeta = true;
           this.meta = cues;
         }
@@ -396,14 +398,14 @@ function addTrackFunctions(AblePlayer) {
   };
 
   AblePlayer.prototype.loadTextObject = function (src) {
-    var deferred, promise, thisObj, $tempDiv;
+    var deferred, promise, thisObj, tempDiv;
 
     deferred = new this.defer();
     promise = deferred.promise();
     thisObj = this;
 
     // create a temp div for holding data
-    $tempDiv = $('<div>', {
+    tempDiv = this.createEl('div', {
       style: 'display:none',
     });
 
@@ -423,19 +425,19 @@ function addTrackFunctions(AblePlayer) {
 				line   = validate.sanitizeVttContent(l);
 				lines += line + "\n\n";
 			});
-			// Load the sanitized content into the $tempDiv
-			$tempDiv.html(lines);
+			// Load the sanitized content into the tempDiv
+			tempDiv.innerHTML = lines;
 			// Resolve the promise with the sanitized content
 			let data = { 'src': src, 'text': lines };
 			deferred.resolve(data);
-			$tempDiv.remove();
+			tempDiv.remove();
 		})
 		.catch( error => {
 			if (thisObj.debug) {
 				console.log( "error reading file " + src + ": " + error );
 			}
 			deferred.reject(src);
-			$tempDiv.remove();
+			tempDiv.remove();
 		});
 
     return promise;

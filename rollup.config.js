@@ -34,7 +34,6 @@ export default [
     {
         input: 'scripts/main.js',
         plugins: getDefaultPlugins(),
-        external: ['jquery'],
         output: [
             {
                 name: 'AblePlayer',
@@ -42,9 +41,6 @@ export default [
                 format: 'umd',
                 banner: `/*! ${nameVersion} - with DOMPurify included. Console logs enabled, for development */\n`,
                 sourcemap: true,
-                globals: {
-                    jquery: 'jQuery',
-                },
             },
             {
                 name: 'AblePlayer',
@@ -52,9 +48,6 @@ export default [
                 format: 'umd',
                 banner: `/*! ${nameVersion} - with DOMPurify included. Minified production bundle. */\n`,
                 sourcemap: true,
-                globals: {
-                    jquery: 'jQuery',
-                },
                 plugins: [getTerserWithConfig()],
             },
         ],
@@ -62,7 +55,6 @@ export default [
     {
         input: 'scripts/main.js',
         plugins: [...getDefaultPlugins(), getStripWithConfig()],
-        external: ['jquery'],
         output: [
             {
                 name: 'AblePlayer',
@@ -70,16 +62,13 @@ export default [
                 format: 'umd',
                 banner: `/*! ${nameVersion} - with DOMPurify included. Console logs disabled, but not minified, for demos. */\n`,
                 sourcemap: true,
-                globals: {
-                    jquery: 'jQuery',
-                },
             },
         ],
     },
     {
         input: 'scripts/main.js',
         plugins: getDefaultPlugins(),
-        external: ['jquery', 'dompurify'],
+        external: ['dompurify'],
         output: [
             {
                 name: 'AblePlayer',
@@ -88,7 +77,6 @@ export default [
                 banner: `/*! ${nameVersion} - needs DOMPurify provided separately. Console logs enabled, for development */\n`,
                 sourcemap: true,
                 globals: {
-                    jquery: 'jQuery',
                     dompurify: 'DOMPurify',
                 },
             },
@@ -99,7 +87,6 @@ export default [
                 banner: `/*! ${nameVersion} - needs DOMPurify provided separately. Minified production bundle. */\n`,
                 sourcemap: true,
                 globals: {
-                    jquery: 'jQuery',
                     dompurify: 'DOMPurify',
                 },
                 plugins: [getTerserWithConfig()],
@@ -109,7 +96,7 @@ export default [
     {
         input: 'scripts/main.js',
         plugins: [...getDefaultPlugins(), getStripWithConfig()],
-        external: ['jquery', 'dompurify'],
+        external: ['dompurify'],
         output: [
             {
                 name: 'AblePlayer',
@@ -118,7 +105,6 @@ export default [
                 banner: `/*! ${nameVersion} - needs DOMPurify provided separately. Console logs disabled, but not minified, for demos. */\n`,
                 sourcemap: true,
                 globals: {
-                    jquery: 'jQuery',
                     dompurify: 'DOMPurify',
                 },
             },

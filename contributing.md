@@ -30,12 +30,9 @@ Copy the `en.json` source file, then replace the English version of the text wit
 
 ## Building the Able Player source
 
-The source JavaScript files for Able Player are in the */scripts* directory, and the source CSS files are in the */styles* directory. These source files are ultimately combined into several different files (in the */build* directory) using [npm][], [Grunt][], and [Rollup][].
+The source JavaScript files for Able Player are in the */scripts* directory, and the source CSS files are in the */styles* directory. These source files are ultimately combined into several different files (in the */build* directory) using [npm][] and [Rollup][].
 
 ```sh
-# Install Grunt globally
-npm install -g grunt-cli
-
 # Install project dependencies
 npm install
 
@@ -43,9 +40,17 @@ npm install
 npm run build
 ```
 
-The npm and Grunt build process is defined by the *Gruntfile.js* and *package.json* files. (Note that the **version number** is specified in *package.json*, and must be updated when a new version is released).
+The build process is defined entirely by the npm `scripts` in *package.json* (no separate task-runner config). (Note that the **version number** is specified in *package.json*, and must be updated when a new version is released.)
 
-Starting in 5.0.0, which migrated Able Player from IIFE to ES modules, most of the building is instead done by Rollup. Grunt's concatenation bundling was sufficient for combining a series of IIFEs, but ES modules require more complex handling. As of 2026, Rollup is the tool of choice for this task. Grunt is still the overall task manager, since CSS minification is still needed, as well as a new step to generate TypeScript type definitions.
+`npm run build` runs these steps in order, and each is also available as its own script:
+
+- `npm run clean` — empties the */build* directory.
+- `npm run build:js` — Rollup bundles */scripts* into the JS files listed below.
+- `npm run build:types` — TypeScript (`tsc`) emits `.d.ts` type declarations from the ES module build.
+- `npm run build:css` — [lightningcss][] minifies the stylesheet to *build/ableplayer.min.css*.
+- `npm run build:dompurify` — copies DOMPurify into *build/separate-dompurify/*.
+
+Starting in 5.0.0, which migrated Able Player from IIFE to ES modules, the bundling is done by Rollup. Earlier versions used Grunt's concatenation, which was sufficient for combining a series of IIFEs, but ES modules require more complex handling, so Rollup is the tool of choice. As of 2026 the build no longer depends on Grunt at all — the remaining steps (CSS minification, type-declaration generation, and copying DOMPurify) are plain npm scripts.
 
 Files created by the build process are put into the */build* directory:
 
@@ -74,7 +79,7 @@ Also in 5.0.0, we build TypeScript type definitions, to aid IDE development with
 All contributors to Able Player are expected to follow our [published Code of Conduct](https://github.com/ableplayer/ableplayer/blob/main/code-of-conduct.md).
 
   [Rollup]: https://rollupjs.org/
-  [Grunt]: https://gruntjs.com/
+  [lightningcss]: https://lightningcss.dev/
   [issues]: https://github.com/ableplayer/ableplayer/issues
   [npm]: https://www.npmjs.com/
   [develop]: https://github.com/ableplayer/ableplayer/tree/develop

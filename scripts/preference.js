@@ -1,5 +1,4 @@
  /*  global Cookies */
- import $ from 'jquery';
  import AccessibleDialog from './dialog';
 
  function addPreferenceFunctions(AblePlayer) {
@@ -44,33 +43,33 @@
 		// e.g., prefAutoScrollTranscript, which is updated in control.js > handleTranscriptLockToggle()
 		// setting is any supported preference name (e.g., "prefCaptions")
 		// OR 'transcript' or 'sign' (not user-defined preferences, used to save position of draggable windows)
-		var preferences, $window, windowPos, available, i, prefName, voiceLangFound, newVoice;
+		var preferences, prefWindow, windowPos, available, i, prefName, voiceLangFound, newVoice;
 		preferences = this.getPref();
 		if (setting === 'transcript' || setting === 'sign') {
 			if (setting === 'transcript') {
-				$window = this.$transcriptArea;
-				windowPos = $window.position();
+				prefWindow = this.transcriptArea;
+				windowPos = { top: prefWindow.offsetTop, left: prefWindow.offsetLeft };
 				if (typeof preferences.transcript === 'undefined') {
 					preferences.transcript = {};
 				}
-				preferences.transcript['position'] = $window.css('position'); // either 'relative' or 'absolute'
-				preferences.transcript['zindex'] = $window.css('z-index');
+				preferences.transcript['position'] = window.getComputedStyle(prefWindow).position; // either 'relative' or 'absolute'
+				preferences.transcript['zindex'] = window.getComputedStyle(prefWindow).zIndex;
 				preferences.transcript['top'] = windowPos.top;
 				preferences.transcript['left'] = windowPos.left;
-				preferences.transcript['width'] = $window.width();
-				preferences.transcript['height'] = $window.height();
+				preferences.transcript['width'] = prefWindow.getBoundingClientRect().width;
+				preferences.transcript['height'] = prefWindow.getBoundingClientRect().height;
 			} else if (setting === 'sign') {
-				$window = this.$signWindow;
-				windowPos = $window.position();
+				prefWindow = this.signWindow;
+				windowPos = { top: prefWindow.offsetTop, left: prefWindow.offsetLeft };
 				if (typeof preferences.sign === 'undefined') {
 					preferences.sign = {};
 				}
-				preferences.sign['position'] = $window.css('position'); // either 'relative' or 'absolute'
-				preferences.sign['zindex'] = $window.css('z-index');
+				preferences.sign['position'] = window.getComputedStyle(prefWindow).position; // either 'relative' or 'absolute'
+				preferences.sign['zindex'] = window.getComputedStyle(prefWindow).zIndex;
 				preferences.sign['top'] = windowPos.top;
 				preferences.sign['left'] = windowPos.left;
-				preferences.sign['width'] = $window.width();
-				preferences.sign['height'] = $window.height();
+				preferences.sign['width'] = prefWindow.getBoundingClientRect().width;
+				preferences.sign['height'] = prefWindow.getBoundingClientRect().height;
 			}
 		} else if (setting === 'voice') {
 			if (typeof preferences.voices === 'undefined') {
@@ -372,39 +371,39 @@
 		// form is one of the supported forms (groups) defined in getPreferencesGroups()
 
 		var thisObj, available,
-			$prefsDiv, formTitle, introText, $prefsIntro,$prefsIntroP2,p3Text,$prefsIntroP3,i, j,
-			$fieldset, fieldsetClass, fieldsetId, $legend, legendId, thisPref, $thisDiv, thisClass,
-			thisId, $thisLabel, $thisField, captionsOptions,options,$thisOption,optionValue,optionLang,optionText,
-			changedPref,changedSpan,changedText, currentDescState, prefDescVoice, prefCaptionVoice, $kbHeading,$kbList,
-			kbLabels,keys,kbListText,$kbListItem, dialog,$saveButton,$cancelButton,$buttonContainer;
+			prefsDiv, formTitle, introText, prefsIntro,prefsIntroP2,p3Text,prefsIntroP3,i, j,
+			fieldset, fieldsetClass, fieldsetId, legend, legendId, thisPref, thisDiv, thisClass,
+			thisId, thisLabel, thisField, captionsOptions,options,thisOption,optionValue,optionLang,optionText,
+			changedPref,changedSpan,changedText, currentDescState, prefDescVoice, prefCaptionVoice, kbHeading,kbList,
+			kbLabels,keys,kbListText,kbListItem, dialog,saveButton,cancelButton,buttonContainer;
 
 		thisObj = this;
 		available = this.getAvailablePreferences();
 
-		// outer container, will be assigned role="dialog"
-		$prefsDiv = $('<div>',{
+		// outer container (native <dialog>), will be assigned role="dialog"
+		prefsDiv = this.createEl('dialog', {
 			'class': 'able-prefs-form '
 		});
 		var customClass = 'able-prefs-form-' + form;
-		$prefsDiv.addClass(customClass);
+		prefsDiv.classList.add(customClass);
 
 		// add titles and intros
 		if (form == 'captions') {
 			formTitle = this.translate( 'prefTitleCaptions', 'Captions Preferences' );
 		} else if (form == 'descriptions') {
 			formTitle = this.translate( 'prefTitleDescriptions', 'Audio Description Preferences' );
-			$prefsIntro = $('<p>',{
+			prefsIntro = this.createEl('p', {
 				text: this.translate( 'prefIntroDescription1', 'This media player supports audio description in two ways: ' )
 			});
-			var $prefsIntroUL = $('<ul>');
-			var $prefsIntroLI1 = $('<li>',{
+			var prefsIntroUL = this.createEl('ul');
+			var prefsIntroLI1 = this.createEl('li', {
 				text: this.translate( 'prefDescFormatOption1', 'alternative described version of video' )
 			});
-			var $prefsIntroLI2 = $('<li>',{
+			var prefsIntroLI2 = this.createEl('li', {
 				text: this.translate( 'prefDescFormatOption2', 'text-based description, announced by screen reader' )
 			});
 
-			$prefsIntroUL.append($prefsIntroLI1,$prefsIntroLI2);
+			prefsIntroUL.append(prefsIntroLI1,prefsIntroLI2);
 			let prefDescription1 = '';
 			let prefDescription2 = '';
 			let prefDescription3 = '';
@@ -419,7 +418,7 @@
 				prefDescriptionNone = this.translate( 'prefDescriptionNone', 'The current video has no audio description in either format.' );
 			}
 			currentDescState = prefDescription1 + prefDescription2 + prefDescription3 + prefDescriptionNone;
-			$prefsIntroP2 = $('<p>',{
+			prefsIntroP2 = this.createEl('p', {
 				html: currentDescState
 			});
 
@@ -427,39 +426,40 @@
 			if (this.hasOpenDesc || this.hasClosedDesc) {
 				p3Text += ' ' + this.translate( 'prefIntroDescription4', 'After you save your settings, audio description can be toggled on/off using the Description button.' );
 			}
-			$prefsIntroP3 = $('<p>',{
+			prefsIntroP3 = this.createEl('p', {
 				text: p3Text
 			});
 
-			$prefsDiv.append( $prefsIntro, $prefsIntroUL, $prefsIntroP2, $prefsIntroP3 );
+			prefsDiv.append( prefsIntro, prefsIntroUL, prefsIntroP2, prefsIntroP3 );
 		} else if (form == 'keyboard') {
 			formTitle = this.translate( 'prefTitleKeyboard', 'Keyboard Preferences' );
 			introText = this.translate( 'prefIntroKeyboard1', 'The media player on this web page can be operated from anywhere on the page using keyboard shortcuts (see below for a list).' );
 			introText += ' ' + this.translate( 'prefIntroKeyboard2', 'Modifier keys (Shift, Alt, and Control) can be assigned below.' );
 			introText += ' ' + this.translate( 'prefIntroKeyboard3', 'NOTE: Some key combinations might conflict with keys used by your browser and/or other software applications. Try various combinations of modifier keys to find one that works for you.' );
-			$prefsIntro = $('<p>',{
+			prefsIntro = this.createEl('p', {
 				text: introText
 			});
-			$prefsDiv.append($prefsIntro);
+			prefsDiv.append(prefsIntro);
 		} else if (form == 'transcript') {
 			formTitle = this.translate( 'prefTitleTranscript', 'Transcript Preferences' );
 		}
 
-		$fieldset = $('<div>').attr('role','group');
+		fieldset = this.createEl('div', { role: 'group' });
 		fieldsetClass = 'able-prefs-' + form;
 		fieldsetId = this.mediaId + '-prefs-' + form;
 		legendId = fieldsetId + '-legend';
-		$fieldset.addClass(fieldsetClass).attr('id',fieldsetId);
+		fieldset.classList.add(fieldsetClass);
+		fieldset.setAttribute('id',fieldsetId);
 		if (form === 'keyboard') {
-			$legend = $('<h2>' + this.translate( 'prefHeadingKeyboard1', 'Modifier keys used for shortcuts' ) + '</h2>');
-			$legend.attr('id',legendId);
-			$fieldset.attr('aria-labelledby',legendId);
-			$fieldset.append($legend);
+			legend = this.createEl('h2', { html: this.translate( 'prefHeadingKeyboard1', 'Modifier keys used for shortcuts' ) });
+			legend.setAttribute('id',legendId);
+			fieldset.setAttribute('aria-labelledby',legendId);
+			fieldset.append(legend);
 		} else if (form === 'descriptions') {
-			$legend = $('<h2>' + this.translate( 'prefHeadingTextDescription', 'Text-based audio description' ) + '</h2>');
-			$legend.attr('id',legendId);
-			$fieldset.attr('aria-labelledby',legendId);
-			$fieldset.append($legend);
+			legend = this.createEl('h2', { html: this.translate( 'prefHeadingTextDescription', 'Text-based audio description' ) });
+			legend.setAttribute('id',legendId);
+			fieldset.setAttribute('aria-labelledby',legendId);
+			fieldset.append(legend);
 		}
 		for (i=0; i<available.length; i++) {
 
@@ -469,24 +469,25 @@
 				thisPref = available[i]['name'];
 				thisClass = 'able-' + thisPref;
 				thisId = this.mediaId + '_' + thisPref;
-				$thisDiv = $('<div>').addClass(thisClass + ' able-player-setting');
+				thisDiv = this.createEl('div');
+				thisDiv.classList.add(thisClass, 'able-player-setting');
 				if (form === 'captions' ) {
-					$thisLabel = $('<label for="' + thisId + '"> ' + available[i]['label'] + '</label>');
-					$thisField = $('<select>',{
+					thisLabel = this.createEl('label', { 'for': thisId, html: ' ' + available[i]['label'] });
+					thisField = this.createEl('select', {
 						name: thisPref,
 						id: thisId,
 					});
 					// add a change handler that updates the style of the sample caption text
 					let viewingOptions = ['prefCaptionsPosition','prefCaptionsFont','prefCaptionsSize','prefCaptionsColor','prefCaptionsBGColor','prefCaptionsOpacity'];
 					if ( viewingOptions.indexOf(thisPref) !== -1 ) {
-						$thisField.on( 'change', function() {
-							changedPref = $(this).attr('name');
-							thisObj.stylizeCaptions(thisObj.$sampleCapsDiv,changedPref);
+						thisField.addEventListener( 'change', function() {
+							changedPref = this.getAttribute('name');
+							thisObj.stylizeCaptions(thisObj.sampleCapsDiv,changedPref);
 						});
 					}
 					captionsOptions = this.getCaptionsOptions(thisPref);
 					if ( ! ( thisPref === 'prefCaptionsVoice' && ! this.descVoices.length ) ) {
-						$thisDiv.append($thisLabel,$thisField);
+						thisDiv.append(thisLabel,thisField);
 					}
 					for (j=0; j < captionsOptions.length; j++) {
 						if (thisPref === 'prefCaptionsPosition') {
@@ -510,14 +511,14 @@
 						}
 						let voicingOptions = ['prefCaptionsPitch','prefCaptionsRate','prefCaptionsVolume'];
 						if ( optionValue && voicingOptions.indexOf(thisPref) === -1 ) {
-							$thisOption = $('<option>',{
+							thisOption = this.createEl('option', {
 								value: optionValue,
 								text: optionText
 							});
 							if (this[thisPref] === optionValue) {
-								$thisOption.prop('selected',true);
+								thisOption.selected = true;
 							}
-							$thisField.append($thisOption);
+							thisField.append(thisOption);
 						}
 						// If synth is possible, show voicing options.
 						if ( this.synth ) {
@@ -527,17 +528,17 @@
 									optionValue = this.descVoices[j].name;
 									optionLang = this.descVoices[j].lang.substring(0,2).toLowerCase();
 									optionText = optionValue + ' (' + this.descVoices[j].lang + ')';
-									$thisOption = $('<option>',{
+									thisOption = this.createEl('option', {
 										'value': optionValue,
 										'data-lang': optionLang,
 										text: optionText
 									});
 									if (prefCaptionVoice === optionValue) {
-										$thisOption.prop('selected',true);
+										thisOption.selected = true;
 									}
-									$thisField.append($thisOption);
+									thisField.append(thisOption);
 								}
-								this.$voiceSelectField = $thisField;
+								this.voiceSelectField = thisField;
 							} else {
 								if ( thisPref == 'prefCaptionsPitch' || thisPref == 'prefCaptionsRate' || thisPref == 'prefCaptionsVolume' ) {
 									options = false;
@@ -549,32 +550,32 @@
 										for (j=0; j < options.length; j++) {
 											optionValue = options[j];
 											optionText = this.makePrefsValueReadable(thisPref,optionValue);
-											$thisOption = $('<option>',{
+											thisOption = this.createEl('option', {
 												value: optionValue,
 												text: optionText
 											});
 											if (this[thisPref] == optionValue) {
-												$thisOption.prop('selected',true);
+												thisOption.selected = true;
 											}
-											$thisField.append($thisOption);
+											thisField.append(thisOption);
 										}
 										// add a change handler that announces the sample text
-										$thisField.on('change',function() {
+										thisField.addEventListener('change',function() {
 											let captionSample = thisObj.translate( 'sampleCaptionText', 'Sample caption text' )
 											thisObj.announceText('captionSample',captionSample);
 										});
-										$thisDiv.append($thisLabel,$thisField);
+										thisDiv.append(thisLabel,thisField);
 									}
 								}
 							}
 						}
 					}
 				} else if (form === 'descriptions') {
-					$thisLabel = $('<label for="' + thisId + '"> ' + available[i]['label'] + '</label>');
+					thisLabel = this.createEl('label', { 'for': thisId, html: ' ' + available[i]['label'] });
 					if (thisPref === 'prefDescPause' || thisPref === 'prefDescVisible') {
 						// these preferences are checkboxes
-						$thisDiv.addClass('able-prefs-checkbox');
-						$thisField = $('<input>',{
+						thisDiv.classList.add('able-prefs-checkbox');
+						thisField = this.createEl('input', {
 							type: 'checkbox',
 							name: thisPref,
 							id: thisId,
@@ -582,13 +583,13 @@
 						});
 						// check current active value for this preference
 						if (this[thisPref] === 1) {
-							$thisField.prop('checked',true);
+							thisField.checked = true;
 						}
-						$thisDiv.append($thisField,$thisLabel);
+						thisDiv.append(thisField,thisLabel);
 					} else if (this.synth) {
 						// Only show these options if browser supports speech synthesis
-						$thisDiv.addClass('able-prefs-select');
-						$thisField = $('<select>',{
+						thisDiv.classList.add('able-prefs-select');
+						thisField = this.createEl('select', {
 							name: thisPref,
 							id: thisId,
 						});
@@ -598,17 +599,17 @@
 								optionValue = this.descVoices[j].name;
 								optionLang = this.descVoices[j].lang.substring(0,2).toLowerCase();
 								optionText = optionValue + ' (' + this.descVoices[j].lang + ')';
-								$thisOption = $('<option>',{
+								thisOption = this.createEl('option', {
 									'value': optionValue,
 									'data-lang': optionLang,
 									text: optionText
 								});
 								if (prefDescVoice === optionValue) {
-									$thisOption.prop('selected',true);
+									thisOption.selected = true;
 								}
-								$thisField.append($thisOption);
+								thisField.append(thisOption);
 							}
-							this.$voiceSelectField = $thisField;
+							this.voiceSelectField = thisField;
 						} else {
 							if (thisPref == 'prefDescPitch') { // 0 to 2
 								options = [0,0.5,1,1.5,2];
@@ -637,27 +638,27 @@
 								for (j=0; j < options.length; j++) {
 									optionValue = options[j];
 									optionText = this.makePrefsValueReadable(thisPref,optionValue);
-									$thisOption = $('<option>',{
+									thisOption = this.createEl('option', {
 										value: optionValue,
 										text: optionText
 									});
 									if (this[thisPref] == optionValue) {
-										$thisOption.prop('selected',true);
+										thisOption.selected = true;
 									}
-									$thisField.append($thisOption);
-									$thisDiv.append($thisLabel,$thisField);
+									thisField.append(thisOption);
+									thisDiv.append(thisLabel,thisField);
 								}
 							}
 						}
 						// add a change handler that announces the sample description text
-						$thisField.on('change',function() {
+						thisField.addEventListener('change',function() {
 							thisObj.announceText('sample',thisObj.currentSampleText);
 						});
-						$thisDiv.append($thisLabel,$thisField);
+						thisDiv.append(thisLabel,thisField);
 					}
 				} else { // all other fields are checkboxes
-					$thisLabel = $('<label for="' + thisId + '"> ' + available[i]['label'] + '</label>');
-					$thisField = $('<input>',{
+					thisLabel = this.createEl('label', { 'for': thisId, html: ' ' + available[i]['label'] });
+					thisField = this.createEl('input', {
 						type: 'checkbox',
 						name: thisPref,
 						id: thisId,
@@ -665,12 +666,12 @@
 					});
 					// check current active value for this preference
 					if (this[thisPref] === 1) {
-						$thisField.prop('checked',true);
+						thisField.checked = true;
 					}
 					if (form === 'keyboard') {
 						// add a change handler that updates the list of current keyboard shortcuts
-						$thisField.on('change',function() {
-							changedPref = $(this).attr('name');
+						thisField.addEventListener('change',function() {
+							changedPref = this.getAttribute('name');
 							if (changedPref === 'prefAltKey') {
 								changedSpan = '.able-modkey-alt';
 								changedText = thisObj.translate( 'prefAltKey', 'Alt' ) + ' + ';
@@ -682,58 +683,68 @@
 								changedText = thisObj.translate( 'prefShiftKey', 'Shift' ) + ' + ';
 							}
 							if ( changedPref !== 'prefNoKeyShortcuts' ) {
-								if ($(this).is(':checked')) {
-									$(changedSpan).text(changedText);
+								if (this.checked) {
+									document.querySelectorAll(changedSpan).forEach(function(el) {
+										el.textContent = changedText;
+									});
 								} else {
-									$(changedSpan).text('');
+									document.querySelectorAll(changedSpan).forEach(function(el) {
+										el.textContent = '';
+									});
 								}
 							} else {
-								if ($(this).is(':checked')) {
-									$('.able-modkey-item').addClass('hidden');
+								if (this.checked) {
+									document.querySelectorAll('.able-modkey-item').forEach(function(el) {
+										el.classList.add('hidden');
+									});
 								} else {
-									$('.able-modkey-item').removeClass('hidden');
+									document.querySelectorAll('.able-modkey-item').forEach(function(el) {
+										el.classList.remove('hidden');
+									});
 								}
 							}
 						});
 					}
-					$thisDiv.append($thisField,$thisLabel);
+					thisDiv.append(thisField,thisLabel);
 				}
 				if (thisPref === 'prefDescVoice' && !this.descVoices.length) {
 					// No voices are available (e.g., in Safari 15.4 on Mac OS)
 				} else {
-					$fieldset.append($thisDiv);
+					fieldset.append(thisDiv);
 				}
 			}
 		}
-		$prefsDiv.append($fieldset);
+		prefsDiv.append(fieldset);
 
 		if (form === 'captions') {
 			// add a sample closed caption div to prefs dialog
 			// do not show this for YouTube captions, since it's not an accurate reflection
 			if (!this.usingYouTubeCaptions) {
-				this.$sampleCapsDiv = $('<div>',{
-					'class': 'able-captions-sample'
-				}).text( this.translate( 'sampleCaptionText', 'Sample caption text' ) );
-				$prefsDiv.append(this.$sampleCapsDiv);
-				this.stylizeCaptions(this.$sampleCapsDiv);
+				this.sampleCapsDiv = this.createEl('div', {
+					'class': 'able-captions-sample',
+					text: this.translate( 'sampleCaptionText', 'Sample caption text' )
+				});
+				prefsDiv.append(this.sampleCapsDiv);
+				this.stylizeCaptions(this.sampleCapsDiv);
 			}
 		} else if (form === 'descriptions') {
 			if (this.synth) {
 				// add a div with sample audio description text
-				this.$sampleDescDiv = $('<div>',{
-					'class': 'able-desc-sample'
-				}).text( this.translate( 'sampleDescriptionText', 'Adjust settings to hear this sample text.' ) );
-				$prefsDiv.append(this.$sampleDescDiv);
+				this.sampleDescDiv = this.createEl('div', {
+					'class': 'able-desc-sample',
+					text: this.translate( 'sampleDescriptionText', 'Adjust settings to hear this sample text.' )
+				});
+				prefsDiv.append(this.sampleDescDiv);
 				this.currentSampleText = this.translate( 'sampleDescriptionText', 'Adjust settings to hear this sample text.' );
 			}
 		} else if (form === 'keyboard') {
 			let shortcutClass = (this.prefNoKeyShortcuts === 1 ) ? 'able-modkey-item hidden' : 'able-modkey-item';
 
 			// add a current list of keyboard shortcuts
-			$kbHeading = $('<h2>',{
+			kbHeading = this.createEl('h2', {
 				text: this.translate( 'prefHeadingKeyboard2', 'Current keyboard shortcuts' )
 			});
-			$kbList = $('<ul>');
+			kbList = this.createEl('ul');
 			// create arrays of kbLabels and keys
 			kbLabels = [];
 			keys = [];
@@ -809,50 +820,50 @@
 				kbListText += '</span>';
 				kbListText += '<span class="able-modkey">' + keys[i] + '</span>';
 				kbListText += ' = ' + kbLabels[i];
-				$kbListItem = $('<li>',{
+				kbListItem = this.createEl('li', {
 					'class': shortcutClass,
 					html: kbListText,
 				});
-				$kbList.append($kbListItem);
+				kbList.append(kbListItem);
 			}
 			// add Escape key
 			kbListText = '<span class="able-modkey">' + this.translate( 'escapeKey', 'Escape' ) + '</span>';
 			kbListText += ' = ' + this.translate( 'escapeKeyFunction', 'Close current dialog or popup menu' );
-			$kbListItem = $('<li>',{
+			kbListItem = this.createEl('li', {
 				html: kbListText
 			});
-			$kbList.append($kbListItem);
+			kbList.append(kbListItem);
 			// put it all together
-			$prefsDiv.append($kbHeading,$kbList);
+			prefsDiv.append(kbHeading,kbList);
 		}
 
-		// $prefsDiv (dialog) must be appended to the BODY!
-		$('body').append($prefsDiv);
+		// prefsDiv (dialog) must be appended to the BODY!
+		document.body.append(prefsDiv);
 		dialog = new AccessibleDialog(
-			$prefsDiv,
-			this.$prefsButton,
+			prefsDiv,
+			this.prefsButton,
 			formTitle,
 			thisObj.translate( 'closeButtonLabel', 'Close' )
 		);
 
 		// Add save and cancel buttons.
-		$buttonContainer = $( '<div class="able-prefs-buttons"></div>' );
-		$saveButton = $('<button class="modal-button">' + this.translate( 'save', 'Save' ) + '</button>');
-		$cancelButton = $('<button class="modal-button">' + this.translate( 'cancel', 'Cancel' ) + '</button>');
-		$saveButton.on( 'click', function () {
+		buttonContainer = this.createEl('div', { 'class': 'able-prefs-buttons' });
+		saveButton = this.createEl('button', { 'class': 'modal-button', text: this.translate( 'save', 'Save' ) });
+		cancelButton = this.createEl('button', { 'class': 'modal-button', text: this.translate( 'cancel', 'Cancel' ) });
+		saveButton.addEventListener( 'click', function () {
 			dialog.hide();
 			thisObj.savePrefsFromForm();
 		});
-		$cancelButton.on( 'click', function () {
+		cancelButton.addEventListener( 'click', function () {
 			dialog.hide();
 			thisObj.resetPrefsForm();
 		});
-		$buttonContainer.append( $saveButton,$cancelButton );
-		$prefsDiv.append($buttonContainer);
+		buttonContainer.append( saveButton,cancelButton );
+		prefsDiv.append(buttonContainer);
 		// Associate the dialog's H1 as aria-labelledby for groups of fields
 		// (alternative to fieldset and legend)
 		if (form === 'captions' || form === 'transcript') {
-			$fieldset.attr('aria-labelledby',dialog.titleH1.attr('id'));
+			fieldset.setAttribute('aria-labelledby',dialog.titleH1.getAttribute('id'));
 		}
 
 		// add global reference for future control
@@ -868,14 +879,18 @@
 
 		// Add click handler for dialog close button
 		// (button is added in dialog.js)
-		$('div.able-prefs-form button.modalCloseButton').on( 'click', function() {
-			thisObj.resetPrefsForm();
-		})
-		// Add handler for escape key
-		$('div.able-prefs-form').on( 'keydown', function(e) {
-			if (e.key === 'Escape') {
+		document.querySelectorAll('dialog.able-prefs-form button.modalCloseButton').forEach(function(btn) {
+			btn.addEventListener( 'click', function() {
 				thisObj.resetPrefsForm();
-			}
+			});
+		});
+		// Add handler for escape key
+		document.querySelectorAll('dialog.able-prefs-form').forEach(function(el) {
+			el.addEventListener( 'keydown', function(e) {
+				if (e.key === 'Escape') {
+					thisObj.resetPrefsForm();
+				}
+			});
 		});
 	};
 
@@ -908,22 +923,22 @@
 		//  getBrowserVoices() succeeds after an earlier failure
 		//  user changes language of captions/subtitles and descVoices changes to match the new language
 
-		var i, optionValue, optionText, $thisOption;
+		var i, optionValue, optionText, thisOption;
 
-		this.$voiceSelectField = $('#' + this.mediaId + field);
-		this.$voiceSelectField.empty();
+		this.voiceSelectField = document.getElementById(this.mediaId + field);
+		this.voiceSelectField.replaceChildren();
 		for (i=0; i < this.descVoices.length; i++) {
 			optionValue = this.descVoices[i].name;
 			optionText = optionValue + ' (' + this.descVoices[i].lang + ')';
-			$thisOption = $('<option>',{
+			thisOption = this.createEl('option', {
 				'value': optionValue,
 				'data-lang': this.descVoices[i].lang.substring(0,2).toLowerCase(),
 				text: optionText
 			});
 			if (this.prefDescVoice == optionValue) {
-				$thisOption.prop('selected',true);
+				thisOption.selected = true;
 			}
-			this.$voiceSelectField.append($thisOption);
+			this.voiceSelectField.append(thisOption);
 		}
 	};
 
@@ -994,17 +1009,23 @@
 			prefName = available[i]['name'];
 			if ((prefName.indexOf('Captions') !== -1) && (prefName !== 'prefCaptions')) {
 				// this is a caption-related select box
-				$('select[name="' + prefName + '"]').val(preferences.preferences[prefName]);
+				document.querySelectorAll('select[name="' + prefName + '"]').forEach(function(el) {
+					el.value = preferences.preferences[prefName];
+				});
 			} else { // all others are checkboxes
 				if (this[prefName] === 1) {
-					$('input[name="' + prefName + '"]').prop('checked',true);
+					document.querySelectorAll('input[name="' + prefName + '"]').forEach(function(el) {
+						el.checked = true;
+					});
 				} else {
-					$('input[name="' + prefName + '"]').prop('checked',false);
+					document.querySelectorAll('input[name="' + prefName + '"]').forEach(function(el) {
+						el.checked = false;
+					});
 				}
 			}
 		}
 		// also restore style of sample caption div
-		this.stylizeCaptions(this.$sampleCapsDiv);
+		this.stylizeCaptions(this.sampleCapsDiv);
 	};
 
 	AblePlayer.prototype.savePrefsFromForm = function () {
@@ -1031,8 +1052,10 @@
 						preferences.voices = [];
 					}
 					voiceSelectId = this.mediaId + '_prefDescVoice';
-					this.prefDescVoice = $('select#' + voiceSelectId).find(':selected').val();
-					this.prefDescVoiceLang = $('select#' + voiceSelectId).find(':selected').attr('data-lang');
+					var voiceSelectEl = document.querySelector('select#' + voiceSelectId);
+					var selectedVoiceOption = voiceSelectEl ? voiceSelectEl.options[voiceSelectEl.selectedIndex] : null;
+					this.prefDescVoice = selectedVoiceOption ? selectedVoiceOption.value : undefined;
+					this.prefDescVoiceLang = selectedVoiceOption ? selectedVoiceOption.getAttribute('data-lang') : null;
 					// replace preferred voice for this lang in preferences.voices array, if one exists
 					// otherwise, add it to the array
 					voiceLangFound = false;
@@ -1057,7 +1080,7 @@
 					}
 				} else if ((prefName.indexOf('Captions') !== -1) && (prefName !== 'prefCaptions')) {
 					// this is one of the caption-related select fields
-					newValue = $('select[id="' + prefId + '"]').val();
+					newValue = document.querySelector('select[id="' + prefId + '"]').value;
 					if (preferences.preferences[prefName] !== newValue) { // user changed setting
 						preferences.preferences[prefName] = newValue;
 						// also update global var for this pref (for caption fields, not done elsewhere)
@@ -1071,7 +1094,7 @@
 					}
 				} else if ((prefName.indexOf('Desc') !== -1) && (prefName !== 'prefDescPause') && prefName !== 'prefDescVisible') {
 					// this is one of the description-related select fields
-					newValue = $('select[id="' + prefId + '"]').val();
+					newValue = document.querySelector('select[id="' + prefId + '"]').value;
 					if (preferences.preferences[prefName] !== newValue) { // user changed setting
 						preferences.preferences[prefName] = newValue;
 						// also update global var for this pref
@@ -1079,7 +1102,7 @@
 						numChanges++;
 					}
 				} else { // all other fields are checkboxes
-					if ($('input[id="' + prefId + '"]').is(':checked')) {
+					if (document.querySelector('input[id="' + prefId + '"]').checked) {
 						preferences.preferences[prefName] = 1;
 						if (this[prefName] === 1) {
 							// nothing has changed
@@ -1121,10 +1144,10 @@
 				instance.loadCurrentPreferences();
 				instance.resetPrefsForm();
 				if (numCapChanges > 0) {
-					instance.stylizeCaptions(instance.$captionsDiv);
+					instance.stylizeCaptions(instance.captionsDiv);
 					// also apply same changes to descriptions, if present
-					if (typeof instance.$descDiv !== 'undefined') {
-						instance.stylizeCaptions(instance.$descDiv);
+					if (typeof instance.descDiv !== 'undefined') {
+						instance.stylizeCaptions(instance.descDiv);
 					}
 				}
 			}
@@ -1132,10 +1155,10 @@
 			// there is only one player
 			this.updatePlayerPrefs();
 			if (numCapChanges > 0) {
-				this.stylizeCaptions(this.$captionsDiv);
+				this.stylizeCaptions(this.captionsDiv);
 				// also apply same changes to descriptions, if present
-				if (typeof this.$descDiv !== 'undefined') {
-					this.stylizeCaptions(this.$descDiv);
+				if (typeof this.descDiv !== 'undefined') {
+					this.stylizeCaptions(this.descDiv);
 				}
 			}
 		}
@@ -1144,18 +1167,24 @@
 	AblePlayer.prototype.updatePlayerPrefs = function () {
 
 		// Update player based on current prefs. Safe to call multiple times.
-		if (this.$transcriptDiv) {
+		if (this.transcriptDiv) {
 			// tabbable transcript
 			if (this.prefTabbable === 1) {
-				this.$transcriptDiv.find('span.able-transcript-seekpoint').attr('tabindex','0');
+				this.transcriptDiv.querySelectorAll('span.able-transcript-seekpoint').forEach(function(el) {
+					el.setAttribute('tabindex','0');
+				});
 			} else {
-				this.$transcriptDiv.find('span.able-transcript-seekpoint').removeAttr('tabindex');
+				this.transcriptDiv.querySelectorAll('span.able-transcript-seekpoint').forEach(function(el) {
+					el.removeAttribute('tabindex');
+				});
 			}
 
 			// transcript highlights
 			if (this.prefHighlight === 0) {
 				// user doesn't want highlights; remove any existing highlights
-				this.$transcriptDiv.find('span').removeClass('able-highlight');
+				this.transcriptDiv.querySelectorAll('span').forEach(function(el) {
+					el.classList.remove('able-highlight');
+				});
 			}
 		}
 

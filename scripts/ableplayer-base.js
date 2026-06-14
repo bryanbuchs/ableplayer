@@ -1,6 +1,5 @@
 /*jslint node: true, browser: true, white: true, indent: 2, unparam: true, plusplus: true */
 
-import $ from 'jquery';
 import DOMPurify from 'dompurify';
 
 // maintain an array of Able Player instances for use globally (e.g., for keeping prefs in sync)
@@ -17,27 +16,32 @@ function ablePlayerSetupWindow() {
 		console.log("`window` is undefined. Skipping one-time Able Player `window` setup.");
 		return;
 	}
-	$(function () {
+	var onReady = function () {
 		if (typeof DOMPurify === 'undefined') {
 			console.warn('Required dependency DOMPurify not available. Please use the full Able Player bundle which has DOMPurify built in. Or, keep using this bundle, and include DOMPurify separately.')
 		}
 
-		$('video, audio').each(function (index, element) {
-			if ($(element).data('able-player') !== undefined) {
-				new AblePlayer($(this),$(element));
+		document.querySelectorAll('video, audio').forEach(function (element) {
+			if (element.getAttribute('data-able-player') !== null) {
+				new AblePlayer(element);
 			}
 		});
-	});
+	};
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', onReady);
+	} else {
+		onReady();
+	}
 
-	// YouTube player support; pass ready event to jQuery so we can catch in player.
+	// YouTube player support; dispatch a ready event we can catch in the player.
 	window.onYouTubeIframeAPIReady = function() {
 		AblePlayer.youTubeIframeAPIReady = true;
-		$('body').trigger('youTubeIframeAPIReady', []);
+		document.body.dispatchEvent(new CustomEvent('youTubeIframeAPIReady'));
 	};
 
 	// If there is only one player on the page, dispatch global keydown events to it
 	// Otherwise, keydowwn events are handled locally (see event.js > handleEventListeners())
-	$(window).on('keydown',function(e) {
+	window.addEventListener('keydown',function(e) {
 		if (AblePlayer.hasSingleInstance()) {
 			const singleInstance = AblePlayer.getSingleInstance();
 			singleInstance.onPlayerKeyPress(e);
@@ -63,9 +67,17 @@ function ablePlayerSetupWindow() {
 
 		var thisObj = this;
 
+		// Accept a native Element, a CSS selector string, or (for backward
+		// compatibility) a jQuery object; normalize to a single native Element.
+		if (typeof media === 'string') {
+			media = document.querySelector(media);
+		} else if (media && media.jquery) {
+			media = media[0];
+		}
+
 		this.media = media;
 
-		if ($(media).length === 0) {
+		if (!media) {
 			this.provideFallback();
 			return;
 		}
@@ -74,7 +86,7 @@ function ablePlayerSetupWindow() {
 		// The following variables CAN be overridden with HTML attributes
 
 		// autoplay (Boolean; if present always resolves to true, regardless of value)
-		if ($(media).attr('autoplay') !== undefined) {
+		if (media.hasAttribute('autoplay')) {
 			this.autoplay = true; // this value remains constant
 			this.okToPlay = true; // this value can change dynamically
 		} else {
@@ -83,36 +95,36 @@ function ablePlayerSetupWindow() {
 		}
 
 		// loop (Boolean; if present always resolves to true, regardless of value)
-		this.loop = ($(media).attr('loop') !== undefined) ? true : false;
+		this.loop = media.hasAttribute('loop');
 
 		// playsinline (Boolean; if present always resolves to true, regardless of value)
-		this.playsInline = ($(media).attr('playsinline') !== undefined) ? '1' : '0';
+		this.playsInline = media.hasAttribute('playsinline') ? '1' : '0';
 
 		// poster (Boolean, indicating whether media element has a poster attribute)
-		this.hasPoster = ( $(media).attr('poster') || $(media).data('poster') ) ? true : false;
+		this.hasPoster = ( media.getAttribute('poster') || this.getData(media, 'poster') ) ? true : false;
 
-		this.audioPoster = $(media).data('poster');
-		this.audioPosterAlt = $(media).data('poster-alt' );
+		this.audioPoster = this.getData(media, 'poster');
+		this.audioPosterAlt = this.getData(media, 'poster-alt');
 
 		// get height and width attributes, if present
 		// and add them to variables
 		// Not currently used, but might be useful for resizing player
-		this.width = $(media).attr('width') ?? 0;
-		this.height = $(media).attr('height') ?? 0;
+		this.width = media.getAttribute('width') ?? 0;
+		this.height = media.getAttribute('height') ?? 0;
 
 		// start-time
-		var startTime = $(media).data('start-time');
+		var startTime = this.getData(media,'start-time');
 		var isNumeric = ( typeof startTime === 'number' || ( typeof startTime === 'string' && startTime.trim() !== '' && ! isNaN(startTime) && isFinite( Number(startTime) ) ) ) ? true : false;
 		this.startTime =  ( startTime !== undefined && isNumeric ) ? startTime : 0;
 
 		// debug
-		this.debug = ($(media).data('debug') !== undefined && $(media).data('debug') !== false) ? true : false;
+		this.debug = (this.getData(media,'debug') !== undefined && this.getData(media,'debug') !== false) ? true : false;
 
 		// Volume
 		// Range is 0 to 10. Best not to crank it to avoid overpowering screen readers
 		this.defaultVolume = 7;
-		if ($(media).data('volume') !== undefined && $(media).data('volume') !== "") {
-			var volume = $(media).data('volume');
+		if (this.getData(media,'volume') !== undefined && this.getData(media,'volume') !== "") {
+			var volume = this.getData(media,'volume');
 			if (volume >= 0 && volume <= 10) {
 				this.defaultVolume = volume;
 			}
@@ -124,7 +136,7 @@ function ablePlayerSetupWindow() {
 		// However, in some applications it might be undesirable to show buttons
 		// (e.g., if chapters or transcripts are provided in an external container)
 
-		if ($(media).data('use-chapters-button') !== undefined && $(media).data('use-chapters-button') === false) {
+		if (this.getData(media,'use-chapters-button') !== undefined && this.getData(media,'use-chapters-button') === false) {
 			this.useChaptersButton = false;
 		} else {
 			this.useChaptersButton = true;
@@ -136,9 +148,9 @@ function ablePlayerSetupWindow() {
 		// set to "true" to write description text to a div
 		// This variable does *not* control the method by which description is read.
 		// For that, see below (this.descMethod)
-		if ($(media).data('descriptions-audible') !== undefined && $(media).data('descriptions-audible') === false) {
+		if (this.getData(media,'descriptions-audible') !== undefined && this.getData(media,'descriptions-audible') === false) {
 			this.readDescriptionsAloud = false;
-		} else if ($(media).data('description-audible') !== undefined && $(media).data('description-audible') === false) {
+		} else if (this.getData(media,'description-audible') !== undefined && this.getData(media,'description-audible') === false) {
 			// support both singular and plural spelling of attribute
 			this.readDescriptionsAloud = false;
 		} else {
@@ -155,20 +167,20 @@ function ablePlayerSetupWindow() {
 		// 'screenreader' - text-based audio description is always handled by screen readers
 		// The latter may be preferable by owners of websites in languages that are not well supported
 		// by the Web Speech API
-		this.descReader = ($(media).data('desc-reader') == 'screenreader') ? 'screenreader' : 'browser';
+		this.descReader = (this.getData(media,'desc-reader') == 'screenreader') ? 'screenreader' : 'browser';
 
 		// Default state of captions and descriptions
 		// This setting is overridden by user preferences, if they exist
 		// values for data-state-captions and data-state-descriptions are 'on' or 'off'
-		this.defaultStateCaptions = ($(media).data('state-captions') == 'off') ? 0 : 1;
-		this.defaultStateDescriptions = ($(media).data('state-descriptions') == 'on') ? 1 : 0;
+		this.defaultStateCaptions = (this.getData(media,'state-captions') == 'off') ? 0 : 1;
+		this.defaultStateDescriptions = (this.getData(media,'state-descriptions') == 'on') ? 1 : 0;
 
 		// Default setting for prefDescPause
 		// Extended description (i.e., pausing during description) is on by default
 		// but this settings give website owners control over that
 		// since they know the nature of their videos, and whether pausing is necessary
 		// This setting is overridden by user preferences, if they exist
-		this.defaultDescPause = ($(media).data('desc-pause-default') == 'off') ? 0 : 1;
+		this.defaultDescPause = (this.getData(media,'desc-pause-default') == 'off') ? 0 : 1;
 
 		// Headings
 		// By default, an off-screen heading is automatically added to the top of the media player
@@ -176,8 +188,8 @@ function ablePlayerSetupWindow() {
 		// Authors can override this behavior by manually assigning a heading level using data-heading-level
 		// Accepted values are 1-6, or 0 which indicates "no heading"
 		// (i.e., author has already hard-coded a heading before the media player; Able Player doesn't need to do this)
-		if ($(media).data('heading-level') !== undefined && $(media).data('heading-level') !== "") {
-			var headingLevel = $(media).data('heading-level');
+		if (this.getData(media,'heading-level') !== undefined && this.getData(media,'heading-level') !== "") {
+			var headingLevel = this.getData(media,'heading-level');
 			if (/^[0-6]*$/.test(headingLevel)) { // must be a valid HTML heading level 1-6; or 0
 				this.playerHeadingLevel = headingLevel;
 			}
@@ -190,24 +202,24 @@ function ablePlayerSetupWindow() {
 		// 2. "external" - Automatically generated, written to an external div (requires data-transcript-div & a valid target element)
 		// 3. "popup" - Automatically generated, written to a draggable, resizable popup window that can be toggled on/off with a button
 		// If data-include-transcript="false", there is no "popup" transcript
-		var transcriptDivLocation = $(media).data('transcript-div');
+		var transcriptDivLocation = this.getData(media,'transcript-div');
 		if ( transcriptDivLocation !== undefined && transcriptDivLocation !== "" && null !== document.getElementById( transcriptDivLocation ) ) {
 			this.transcriptDivLocation = transcriptDivLocation;
 		} else {
 			this.transcriptDivLocation = null;
 		}
-		var includeTranscript = $(media).data('include-transcript');
+		var includeTranscript = this.getData(media,'include-transcript');
 		this.hideTranscriptButton = ( includeTranscript !== undefined && includeTranscript === false) ? true : false;
 
 		this.transcriptType = null;
-		if ($(media).data('transcript-src') !== undefined) {
-			this.transcriptSrc = $(media).data('transcript-src');
+		if (this.getData(media,'transcript-src') !== undefined) {
+			this.transcriptSrc = this.getData(media,'transcript-src');
 			if (this.transcriptSrcHasRequiredParts()) {
 				this.transcriptType = 'manual';
 			} else {
 				console.log('ERROR: Able Player transcript is missing required parts');
 			}
-		} else if ($(media).find('track[kind="captions"],track[kind="subtitles"],track:not([kind])').length > 0) {
+		} else if (media.querySelectorAll('track[kind="captions"],track[kind="subtitles"],track:not([kind])').length > 0) {
 			// required tracks are present. COULD automatically generate a transcript
 			this.transcriptType = (this.transcriptDivLocation) ? 'external' : 'popup';
 		}
@@ -215,85 +227,85 @@ function ablePlayerSetupWindow() {
 		// In "Lyrics Mode", line breaks in WebVTT caption files are supported in the transcript
 		// If false (default), line breaks are are removed from transcripts for a more seamless reading experience
 		// If true, line breaks are preserved, so content can be presented karaoke-style, or as lines in a poem
-		this.lyricsMode = ($(media).data('lyrics-mode') !== undefined && $(media).data('lyrics-mode') !== false) ? true : false;
+		this.lyricsMode = (this.getData(media,'lyrics-mode') !== undefined && this.getData(media,'lyrics-mode') !== false) ? true : false;
 
 		// Set Transcript Title if defined explicitly. See transcript.js.
-		if ($(media).data('transcript-title') !== undefined && $(media).data('transcript-title') !== "") {
-			this.transcriptTitle = $(media).data('transcript-title');
+		if (this.getData(media,'transcript-title') !== undefined && this.getData(media,'transcript-title') !== "") {
+			this.transcriptTitle = this.getData(media,'transcript-title');
 		}
 
 		// Sign Language
 		// sign language can be a modal (default) or assigned to a div on the page.
-		var signDivLocation = $(media).data('sign-div');
+		var signDivLocation = this.getData(media,'sign-div');
 		if ( signDivLocation !== undefined && signDivLocation !== "" && null !== document.getElementById( signDivLocation ) ) {
-			this.$signDivLocation = $( '#' + signDivLocation );
+			this.signDivLocation = document.getElementById( signDivLocation );
 		} else {
-			this.$signDivLocation = null;
+			this.signDivLocation = null;
 		}
 
 		// Captions
 		// data-captions-position can be used to set the default captions position
 		// this is only the default, and can be overridden by user preferences
 		// valid values of data-captions-position are 'below' and 'overlay'
-		this.defaultCaptionsPosition = ($(media).data('captions-position') === 'overlay') ? 'overlay' : 'below';
+		this.defaultCaptionsPosition = (this.getData(media,'captions-position') === 'overlay') ? 'overlay' : 'below';
 
 		// Chapters
-		var chaptersDiv = $(media).data('chapters-div');
+		var chaptersDiv = this.getData(media,'chapters-div');
 		if ( chaptersDiv !== undefined && chaptersDiv !== "") {
 			this.chaptersDivLocation = chaptersDiv;
 		}
 
-		if ($(media).data('chapters-title') !== undefined) {
+		if (this.getData(media,'chapters-title') !== undefined) {
 			// NOTE: empty string is valid; results in no title being displayed
-			this.chaptersTitle = $(media).data('chapters-title');
+			this.chaptersTitle = this.getData(media,'chapters-title');
 		}
 
-		var defaultChapter = $(media).data('chapters-default');
+		var defaultChapter = this.getData(media,'chapters-default');
 		this.defaultChapter = ( defaultChapter !== undefined && defaultChapter !== "") ? defaultChapter : null;
 
 		// Slower/Faster buttons
 		// valid values of data-speed-icons are 'animals' (default) and 'arrows'
 		// 'animals' uses turtle and rabbit; 'arrows' uses up/down arrows
-		this.speedIcons = ($(media).data('speed-icons') === 'arrows') ? 'arrows' : 'animals';
+		this.speedIcons = (this.getData(media,'speed-icons') === 'arrows') ? 'arrows' : 'animals';
 
 		// Seekbar
 		// valid values of data-seekbar-scope are 'chapter' and 'video'; will also accept 'chapters'
-		var seekbarScope = $(media).data('seekbar-scope');
+		var seekbarScope = this.getData(media,'seekbar-scope');
 		this.seekbarScope = ( seekbarScope === 'chapter' || seekbarScope === 'chapters') ? 'chapter' : 'video';
 
 		// YouTube
-		var youTubeId = $(media).data('youtube-id');
+		var youTubeId = this.getData(media,'youtube-id');
 		if ( youTubeId !== undefined && youTubeId !== "") {
 			this.youTubeId = this.getYouTubeId(youTubeId);
 			if ( ! this.hasPoster ) {
 				let poster = this.getYouTubePosterUrl(this.youTubeId,'640');
-				$(media).attr( 'poster', poster );
+				media.setAttribute( 'poster', poster );
 			}
 		}
 
-		var youTubeDescId = $(media).data('youtube-desc-id');
+		var youTubeDescId = this.getData(media,'youtube-desc-id');
 		if ( youTubeDescId !== undefined && youTubeDescId !== "") {
 			this.youTubeDescId = this.getYouTubeId(youTubeDescId);
 		}
 
-		var youTubeSignId = $(media).data('youtube-sign-src');
+		var youTubeSignId = this.getData(media,'youtube-sign-src');
 		if ( youTubeSignId !== undefined && youTubeSignId !== "") {
 			this.youTubeSignId = this.getYouTubeId(youTubeSignId);
 		}
 
-		var youTubeNoCookie = $(media).data('youtube-nocookie');
+		var youTubeNoCookie = this.getData(media,'youtube-nocookie');
 		this.youTubeNoCookie = (youTubeNoCookie !== undefined && youTubeNoCookie) ? true : false;
 
 		// Vimeo
-		var vimeoId = $(media).data('vimeo-id');
+		var vimeoId = this.getData(media,'vimeo-id');
 		if ( vimeoId !== undefined && vimeoId !== "") {
 			this.vimeoId = this.getVimeoId(vimeoId);
 			if ( ! this.hasPoster ) {
 				let poster = thisObj.getVimeoPosterUrl(this.vimeoId,'1200');
-				$(media).attr( 'poster', poster );
+				media.setAttribute( 'poster', poster );
 			}
 		}
-		var vimeoDescId = $(media).data('vimeo-desc-id');
+		var vimeoDescId = this.getData(media,'vimeo-desc-id');
 		if ( vimeoDescId !== undefined && vimeoDescId !== "") {
 			this.vimeoDescId = this.getVimeoId(vimeoDescId);
 		}
@@ -302,25 +314,22 @@ function ablePlayerSetupWindow() {
 		// valid values of data-skin are:
 		// '2020' (default as of 4.6), all buttons in one row beneath a full-width seekbar
 		// 'legacy', two rows of controls; seekbar positioned in available space within top row
-		this.skin = ($(media).data('skin') == 'legacy') ? 'legacy' : '2020';
+		this.skin = (this.getData(media,'skin') == 'legacy') ? 'legacy' : '2020';
 
 		// Size
 		// width of Able Player is determined using the following order of precedence:
 		// 1. data-width attribute
 		// 2. width attribute (for video or audio, although it is not valid HTML for audio)
 		// 3. Intrinsic size from video (video only, determined later)
-		if ($(media).data('width') !== undefined) {
-			this.playerWidth = parseInt($(media).data('width'));
-		} else if ($(media)[0].getAttribute('width')) {
-			// NOTE: jQuery attr() returns null for all invalid HTML attributes
-			// (e.g., width on <audio>)
-			// but it can be acessed via JavaScript getAttribute()
-			this.playerWidth = parseInt($(media)[0].getAttribute('width'));
+		if (this.getData(media,'width') !== undefined) {
+			this.playerWidth = parseInt(this.getData(media,'width'));
+		} else if (media.getAttribute('width')) {
+			this.playerWidth = parseInt(media.getAttribute('width'));
 		} else {
 			this.playerWidth = null;
 		}
 
-		var allowFullScreen = $(media).data('allow-fullscreen');
+		var allowFullScreen = this.getData(media,'allow-fullscreen');
 		this.allowFullscreen = (allowFullScreen !== undefined && allowFullScreen === false) ? false : true;
 
 		// Define other variables that are used in fullscreen program flow
@@ -333,8 +342,8 @@ function ablePlayerSetupWindow() {
 		// Calculation attempts to intelligently assign a reasonable interval based on media length
 		this.defaultSeekInterval = 10;
 		this.useFixedSeekInterval = false; // will change to true if media has valid data-seek-interval attribute
-		if ($(media).data('seek-interval') !== undefined && $(media).data('seek-interval') !== "") {
-			var seekInterval = $(media).data('seek-interval');
+		if (this.getData(media,'seek-interval') !== undefined && this.getData(media,'seek-interval') !== "") {
+			var seekInterval = this.getData(media,'seek-interval');
 			if (/^[1-9][0-9]*$/.test(seekInterval)) { // must be a whole number greater than 0
 				this.seekInterval = seekInterval;
 				this.useFixedSeekInterval = true; // do not override with calculuation
@@ -344,12 +353,12 @@ function ablePlayerSetupWindow() {
 		// Now Playing
 		// Shows "Now Playing:" plus the title of the current track above player
 		// Only used if there is a playlist
-		var showNowPlaying = $(media).data('show-now-playing');
+		var showNowPlaying = this.getData(media,'show-now-playing');
 		this.showNowPlaying = (showNowPlaying !== undefined && showNowPlaying === false) ? false : true;
 
 		// Fallback
 		// The data-test-fallback attribute can be used to test the fallback solution in any browser
-		var testFallback = $(media).data('test-fallback');
+		var testFallback = this.getData(media,'test-fallback');
 		if ( testFallback !== undefined && testFallback !== false) {
 			// 1: build error; 2: browser doesn't support media.
 			this.testFallback = ( testFallback == '2' ) ? 2 : 1;
@@ -363,45 +372,45 @@ function ablePlayerSetupWindow() {
 		// 2. Lang attribute on <html> or <body>, if a matching translation file is available
 		// 3. English
 		// Final calculation occurs in translation.js > getTranslationText()
-		var lang = $(media).data('lang');
+		var lang = this.getData(media,'lang');
 		this.lang = ( lang !== undefined && lang !== "") ? lang.toLowerCase() : null;
 
 		// Metadata Tracks
-		var metaType = $(media).data('meta-type');
+		var metaType = this.getData(media,'meta-type');
 		if ( metaType !== undefined && metaType !== "") {
 			this.metaType = metaType;
 		}
-		var metaDiv = $(media).data('meta-div');
+		var metaDiv = this.getData(media,'meta-div');
 		if ( metaDiv !== undefined && metaDiv !== "") {
 			this.metaDiv = metaDiv;
 		}
 
 		// Search
 		// conducting a search requires an external div in which to write the results
-		var searchDiv = $(media).data('search-div');
+		var searchDiv = this.getData(media,'search-div');
 		if ( searchDiv !== undefined && searchDiv !== "") {
 
 			this.searchDiv = searchDiv;
 
 			// Search term (optional; could be assigned later in a JavaScript application)
-			var searchString = $(media).data('search');
+			var searchString = this.getData(media,'search');
 			if ( searchString !== undefined && searchString !== "") {
 				this.searchString = searchString;
 			}
 
 			// Search Language
-			var searchLang = $(media).data('search-lang');
+			var searchLang = this.getData(media,'search-lang');
 			this.searchLang = ( searchLang !== undefined && searchLang !== "") ? searchLang : null;
 
 			// Search option: Ignore capitalization in search terms
-			var searchIgnoreCaps = $(media).data('search-ignore-caps');
+			var searchIgnoreCaps = this.getData(media,'search-ignore-caps');
 			this.searchIgnoreCaps = ( searchIgnoreCaps !== undefined && searchIgnoreCaps !== false) ? true : false;
 		}
 
 		// Hide controls when video starts playing
 		// They will reappear again when user presses a key or moves the mouse
 		// As of v4.0, controls are hidden automatically on playback in fullscreen mode
-		if ($(media).data('hide-controls') !== undefined && $(media).data('hide-controls') !== false) {
+		if (this.getData(media,'hide-controls') !== undefined && this.getData(media,'hide-controls') !== false) {
 			this.hideControls = true;
 			this.hideControlsOriginal = true; // a copy of hideControls, since the former may change if user enters full screen mode
 		} else {
@@ -412,25 +421,25 @@ function ablePlayerSetupWindow() {
 		// Steno mode
 		// Enable support for Able Player keyboard shortcuts in textaarea fields
 		// so users can control the player while transcribing
-		if ($(media).data('steno-mode') !== undefined && $(media).data('steno-mode') !== false) {
+		if (this.getData(media,'steno-mode') !== undefined && this.getData(media,'steno-mode') !== false) {
 			this.stenoMode = true;
 			// Add support for stenography in an iframe via data-steno-iframe-id
-			if ($(media).data('steno-iframe-id') !== undefined && $(media).data('steno-iframe-id') !== "") {
-				this.stenoFrameId = $(media).data('steno-iframe-id');
-				this.$stenoFrame = $('#' + this.stenoFrameId);
-				if (!(this.$stenoFrame.length)) {
+			if (this.getData(media,'steno-iframe-id') !== undefined && this.getData(media,'steno-iframe-id') !== "") {
+				this.stenoFrameId = this.getData(media,'steno-iframe-id');
+				this.stenoFrame = document.getElementById(this.stenoFrameId);
+				if (!this.stenoFrame) {
 					// iframe not found
 					this.stenoFrameId = null;
-					this.$stenoFrame = null;
+					this.stenoFrame = null;
 				}
 			} else {
 				this.stenoFrameId = null;
-				this.$stenoFrame = null;
+				this.stenoFrame = null;
 			}
 		} else {
 			this.stenoMode = false;
 			this.stenoFrameId = null;
-			this.$stenoFrame = null;
+			this.stenoFrame = null;
 		}
 
 		// Define built-in variables that CANNOT be overridden with HTML attributes
@@ -443,7 +452,7 @@ function ablePlayerSetupWindow() {
 		this.ableIndex = AblePlayer.nextIndex;
 		AblePlayer.nextIndex += 1;
 
-		this.title = $(media).attr('title');
+		this.title = media.getAttribute('title');
 
 		// populate translation object with localized versions of all labels and prompts
 		this.tt = {};
@@ -536,10 +545,10 @@ function ablePlayerSetupWindow() {
 	AblePlayer.localGetElementById = function(element, id) {
 		if (element.getRootNode) {
 			// Use getRootNode() and querySelector() where supported (for shadow DOM support)
-			return $(element.getRootNode().querySelector('#' + id));
+			return element.getRootNode().querySelector('#' + id);
 		} else {
 			// If getRootNode is not supported it should be safe to use document.getElementById (since there is no shadow DOM support)
-			return $(document.getElementById(id));
+			return document.getElementById(id);
 		}
 	};
 

@@ -1,8 +1,6 @@
-import $ from 'jquery';
-
 function addVolumeFunctions(AblePlayer) {
 
-	AblePlayer.prototype.addVolumeSlider = function($div) {
+	AblePlayer.prototype.addVolumeSlider = function(div) {
 
 		// Prior to v4.4.64, we were using a custom-build vertical volunme slider
 		// Changed to input type="range" because it's standard and gaining more widespread support
@@ -17,16 +15,18 @@ function addVolumeFunctions(AblePlayer) {
 		volumeSliderId = this.mediaId + '-volume-slider';
 		volumeHelpId = this.mediaId + '-volume-help';
 
-		this.$volumeSlider = $('<div>',{
+		this.volumeSlider = this.createEl('div', {
 			'id': volumeSliderId,
 			'class': 'able-volume-slider',
 			'aria-hidden': 'true'
-		}).hide();
-		this.$volumeSliderTooltip = $('<div>',{
+		});
+		this.volumeSlider.style.display = 'none';
+		this.volumeSliderTooltip = this.createEl('div', {
 			'class': 'able-tooltip',
 			'role': 'tooltip'
-		}).hide();
-		this.$volumeRange = $('<input>',{
+		});
+		this.volumeSliderTooltip.style.display = 'none';
+		this.volumeRange = this.createEl('input', {
 			'type': 'range',
 			'min': '0',
 			'max': '10',
@@ -36,33 +36,34 @@ function addVolumeFunctions(AblePlayer) {
 			'value': this.volume
 		});
 		volumePct = parseInt(thisObj.volume) / 10 * 100;
-		this.$volumeHelp = $('<div>',{
+		this.volumeHelp = this.createEl('div', {
 			'id': volumeHelpId,
 			'class': 'able-volume-help',
-			'aria-live': 'polite'
-		}).text(volumePct + '%');
-		volumeLabel = this.$volumeButton.attr( 'aria-label' );
-		this.$volumeButton.attr( 'aria-label', volumeLabel + ' ' + volumePct + '%');
-		this.$volumeSlider.append(this.$volumeSliderTooltip,this.$volumeRange,this.$volumeHelp);
-		volumeHeight = this.$volumeButton.parents( '.able-control-row' )[0];
-		this.$volumeSlider.css( 'bottom', volumeHeight.offsetHeight );
+			'aria-live': 'polite',
+			text: volumePct + '%'
+		});
+		volumeLabel = this.volumeButton.getAttribute( 'aria-label' );
+		this.volumeButton.setAttribute( 'aria-label', volumeLabel + ' ' + volumePct + '%');
+		this.volumeSlider.append(this.volumeSliderTooltip, this.volumeRange, this.volumeHelp);
+		volumeHeight = this.volumeButton.closest( '.able-control-row' );
+		this.volumeSlider.style.bottom = volumeHeight.offsetHeight + 'px';
 
-		$div.append(this.$volumeSlider);
+		div.append(this.volumeSlider);
 
 		// add event listeners
-		this.$volumeRange.on('change',function (e) {
-			thisObj.handleVolumeChange($(this).val());
+		this.volumeRange.addEventListener('change', function (e) {
+			thisObj.handleVolumeChange(this.value);
 		});
 
-		this.$volumeRange.on('input',function (e) {
-			thisObj.handleVolumeChange($(this).val());
+		this.volumeRange.addEventListener('input', function (e) {
+			thisObj.handleVolumeChange(this.value);
 		});
 
-		this.$volumeRange.on('keydown',function (e) {
+		this.volumeRange.addEventListener('keydown', function (e) {
 
 			if (e.key === 'Escape' || e.key === 'Tab' || e.key === 'Enter') {
 				// close popup
-				if (thisObj.$volumeSlider.is(':visible')) {
+				if (thisObj.volumeSlider.offsetParent !== null || thisObj.volumeSlider.getClientRects().length) {
 					thisObj.closingVolume = true; // stopgap
 					thisObj.hideVolumePopup();
 				} else {
@@ -83,14 +84,14 @@ function addVolumeFunctions(AblePlayer) {
 		volumePct = (volume/10) * 100;
 
 		// Update help text
-		if (this.$volumeHelp) {
-			this.$volumeHelp.text(volumePct + '%');
+		if (this.volumeHelp) {
+			this.volumeHelp.textContent = volumePct + '%';
 		}
 
 		// Update the default value of the volume slider input field
 		// This doesn't seem to be necessary; browsers remember the previous setting during a session
 		// but this is a fallback in case they don't
-		this.$volumeRange.attr('value',volume);
+		this.volumeRange.setAttribute('value', volume);
 	};
 
 	AblePlayer.prototype.refreshVolumeButton = function(volume) {
@@ -101,13 +102,13 @@ function addVolumeFunctions(AblePlayer) {
 		volumePct = (volume/10) * 100;
 		volumeLabel = this.translate( 'volume', 'Volume' ) + ' ' + volumePct + '%';
 
-		this.getIcon( this.$volumeButton, 'volume-' + volumeName );
-		this.$volumeButton.attr( 'aria-label', volumeLabel );
+		this.getIcon( this.volumeButton, 'volume-' + volumeName );
+		this.volumeButton.setAttribute( 'aria-label', volumeLabel );
 	};
 
 	AblePlayer.prototype.handleVolumeButtonClick = function() {
 
-		if (this.$volumeSlider.is(':visible')) {
+		if (this.volumeSlider.offsetParent !== null || this.volumeSlider.getClientRects().length) {
 			this.hideVolumePopup();
 		} else {
 			this.showVolumePopup();
@@ -155,19 +156,22 @@ function addVolumeFunctions(AblePlayer) {
 	AblePlayer.prototype.showVolumePopup = function() {
 
 		this.closePopups();
-		this.$tooltipDiv.hide();
-		this.$volumeSlider.show().attr('aria-hidden','false');
-		this.$volumeButton.attr('aria-expanded','true');
-		this.$volumeButton.focus(); // for screen reader expanded state to be read
-		this.waitThenFocus(this.$volumeRange);
+		this.tooltipDiv.style.display = 'none';
+		this.volumeSlider.style.display = '';
+		this.volumeSlider.setAttribute('aria-hidden','false');
+		this.volumeButton.setAttribute('aria-expanded','true');
+		this.volumeButton.focus(); // for screen reader expanded state to be read
+		this.waitThenFocus(this.volumeRange);
 	};
 
 	AblePlayer.prototype.hideVolumePopup = function() {
 
 		var thisObj = this;
 
-		this.$volumeSlider.hide().attr('aria-hidden','true');
-		this.$volumeButton.attr('aria-expanded','false').focus();
+		this.volumeSlider.style.display = 'none';
+		this.volumeSlider.setAttribute('aria-hidden','true');
+		this.volumeButton.setAttribute('aria-expanded','false');
+		this.volumeButton.focus();
 		// wait a second before resetting stopgap var
 		// otherwise the keypress used to close volume popup will trigger the volume button
 		setTimeout(function() {
