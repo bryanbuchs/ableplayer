@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import DOMPurify from 'dompurify';
 
 function addDescriptionFunctions(AblePlayer) {
@@ -35,7 +34,7 @@ function addDescriptionFunctions(AblePlayer) {
 		// check to see if there's an open-described version of this video
 		// checks only the first source since if a described version is provided,
 		// it must be provided for all sources
-		this.descFile = this.$sources.first().attr('data-desc-src');
+		this.descFile = this.sources[0].hasAttribute('data-desc-src') ? this.sources[0].getAttribute('data-desc-src') : undefined;
 		if (typeof this.descFile !== 'undefined') {
 			this.hasOpenDesc = true;
 		} else {
@@ -71,7 +70,7 @@ function addDescriptionFunctions(AblePlayer) {
 		}
 
 		// If a video has text audio descriptions, inject the description area.
-		if (typeof this.$descDiv === 'undefined' && this.hasClosedDesc ) {
+		if (typeof this.descDiv === 'undefined' && this.hasClosedDesc ) {
 			this.injectTextDescriptionArea();
 		}
 
@@ -83,14 +82,14 @@ function addDescriptionFunctions(AblePlayer) {
 			if (this.hasClosedDesc) {
 				if (this.prefDescVisible) {
 					// make description text visible
-					if (typeof this.$descDiv !== 'undefined') {
-						this.$descDiv.show();
-						this.$descDiv.removeClass('able-offscreen');
+					if (typeof this.descDiv !== 'undefined') {
+						this.descDiv.style.display = '';
+						this.descDiv.classList.remove('able-offscreen');
 					}
 				} else {
 					// keep it visible to screen readers, but hide it visibly
-					if (typeof this.$descDiv !== 'undefined') {
-						this.$descDiv.addClass('able-offscreen');
+					if (typeof this.descDiv !== 'undefined') {
+						this.descDiv.classList.add('able-offscreen');
 					}
 				}
 			}
@@ -102,9 +101,9 @@ function addDescriptionFunctions(AblePlayer) {
 				}
 			} else if (this.descMethod === 'text') { // user has turned off text description
 				// hide description div from everyone, including screen reader users
-				if (typeof this.$descDiv !== 'undefined') {
-					this.$descDiv.hide();
-					this.$descDiv.removeClass('able-offscreen');
+				if (typeof this.descDiv !== 'undefined') {
+					this.descDiv.style.display = 'none';
+					this.descDiv.classList.remove('able-offscreen');
 				}
 			}
 		}
@@ -121,7 +120,7 @@ function addDescriptionFunctions(AblePlayer) {
 		} else if (this.player === 'vimeo') {
 			return (this.activeVimeoId === this.vimeoDescId);
 		} else {
-			return (this.$sources.first().attr('data-desc-src') === this.$sources.first().attr('src'));
+			return (this.sources[0].getAttribute('data-desc-src') === this.sources[0].getAttribute('src'));
 		}
 	};
 
@@ -155,7 +154,7 @@ function addDescriptionFunctions(AblePlayer) {
 			attemptEnableSpeech();
 			// Once the utterance starts, remove this specific click event listener
 			// Ensures the event handler only runs once and cleans up after itself
-			$(document).off("click", handleInitialClick);
+			document.removeEventListener("click", handleInitialClick);
 		}
 
 		if (this.speechEnabled === null) {
@@ -169,7 +168,7 @@ function addDescriptionFunctions(AblePlayer) {
 					attemptEnableSpeech();
 					// For initial setup, require a user click to enable speech synthesis
 					// Scoping to a particular handler to avoid conflicts with other click events
-					$(document).on("click", handleInitialClick);
+					document.addEventListener("click", handleInitialClick);
 				} else {
 					// For other contexts, attempt to enable speech synthesis directly
 					attemptEnableSpeech();
@@ -284,8 +283,8 @@ function addDescriptionFunctions(AblePlayer) {
 				this.prefDescVoice = descVoice;
 				this.prefDescVoiceLang = descLang;
 				// select this voice in the Description Prefs dialog
-				if (this.$voiceSelectField) {
-					this.$voiceSelectField.val(this.prefDescVoice);
+				if (this.voiceSelectField) {
+					this.voiceSelectField.value = this.prefDescVoice;
 				}
 				this.updatePreferences('voice');
 			}
@@ -313,7 +312,7 @@ function addDescriptionFunctions(AblePlayer) {
 		// get element that has focus at the time swap is initiated
 		// after player is rebuilt, focus will return to that same element
 		// (if it exists)
-		this.$focusedElement = $(':focus');
+		this.focusedElement = AblePlayer.getActiveDOMElement();
 		this.activeMedia = this.mediaId;
 
 		// get current time of current source, and attempt to start new video at the same time
@@ -346,23 +345,23 @@ function addDescriptionFunctions(AblePlayer) {
 
 			if (this.usingDescribedVersion()) {
 				// the described version is currently playing. Swap to non-described
-				for (i=0; i < this.$sources.length; i++) {
+				for (i=0; i < this.sources.length; i++) {
 					// for all <source> elements, replace src with data-orig-src
-					origSrc = DOMPurify.sanitize( this.$sources[i].getAttribute('data-orig-src') );
+					origSrc = DOMPurify.sanitize( this.sources[i].getAttribute('data-orig-src') );
 					if (origSrc) {
-						this.$sources[i].setAttribute('src',origSrc);
+						this.sources[i].setAttribute('src',origSrc);
 					}
 				}
 			} else {
 				// the non-described version is currently playing. Swap to described.
-				for (i=0; i < this.$sources.length; i++) {
+				for (i=0; i < this.sources.length; i++) {
 					// for all <source> elements, replace src with data-desc-src (if one exists)
 					// then store original source in a new data-orig-src attribute
-					origSrc = DOMPurify.sanitize( this.$sources[i].getAttribute('src') );
-					descSrc = DOMPurify.sanitize( this.$sources[i].getAttribute('data-desc-src') );
+					origSrc = DOMPurify.sanitize( this.sources[i].getAttribute('src') );
+					descSrc = DOMPurify.sanitize( this.sources[i].getAttribute('data-desc-src') );
 					if (descSrc) {
-						this.$sources[i].setAttribute('src',descSrc);
-						this.$sources[i].setAttribute('data-orig-src',origSrc);
+						this.sources[i].setAttribute('src',descSrc);
+						this.sources[i].setAttribute('data-orig-src',origSrc);
 					}
 				}
 			}
@@ -479,12 +478,12 @@ function addDescriptionFunctions(AblePlayer) {
 		}
 		if (typeof thisDescription !== 'undefined') {
 			if (this.currentDescription !== thisDescription) {
-				// temporarily remove aria-live from $status to prevent description from being interrupted
-				this.$status.removeAttr('aria-live');
+				// temporarily remove aria-live from status to prevent description from being interrupted
+				this.status.removeAttribute('aria-live');
 				descText = flattenComponentForDescription(cues[thisDescription].components);
 				if (this.descReader === 'screenreader') {
 					// load the new description into the container div for screen readers to read
-					this.$descDiv.html(descText);
+					this.descDiv.innerHTML = descText;
 				} else if (this.speechEnabled) {
 					if ( 'video' !== this.descMethod ) {
 						// use browser's built-in speech synthesis
@@ -493,12 +492,14 @@ function addDescriptionFunctions(AblePlayer) {
 					if (this.prefDescVisible) {
 						// write description to the screen for sighted users
 						// but remove ARIA attributes since it isn't intended to be read by screen readers
-						this.$descDiv.html(descText).removeAttr('aria-live aria-atomic');
+						this.descDiv.innerHTML = descText;
+						this.descDiv.removeAttribute('aria-live');
+						this.descDiv.removeAttribute('aria-atomic');
 					}
 				} else {
 					// browser does not support speech synthesis
 					// load the new description into the container div for screen readers to read
-					this.$descDiv.html(descText);
+					this.descDiv.innerHTML = descText;
 				}
 				// Only pause video if not using a described video.
 				if (this.prefDescPause && this.descMethod === 'text') {
@@ -508,10 +509,10 @@ function addDescriptionFunctions(AblePlayer) {
 				this.currentDescription = thisDescription;
 			}
 		} else {
-			this.$descDiv.html('');
+			this.descDiv.innerHTML = '';
 			this.currentDescription = -1;
-			// restore aria-live to $status
-			this.$status.attr('aria-live','polite');
+			// restore aria-live to status
+			this.status.setAttribute('aria-live','polite');
 		}
 	};
 
@@ -583,16 +584,16 @@ function addDescriptionFunctions(AblePlayer) {
 
 		if (context === 'sample') {
 			// get settings from form
-			voiceName = $('#' + this.mediaId + '_prefDescVoice').val();
-			pitch = $('#' + this.mediaId + '_prefDescPitch').val();
-			rate = $('#' + this.mediaId + '_prefDescRate').val();
-			volume = $('#' + this.mediaId + '_prefDescVolume').val();
+			voiceName = document.getElementById(this.mediaId + '_prefDescVoice').value;
+			pitch = document.getElementById(this.mediaId + '_prefDescPitch').value;
+			rate = document.getElementById(this.mediaId + '_prefDescRate').value;
+			volume = document.getElementById(this.mediaId + '_prefDescVolume').value;
 		} else if ( context === 'captionSample' ) {
 			// get settings from form
-			voiceName = $('#' + this.mediaId + '_prefCaptionsVoice').val();
-			pitch = $('#' + this.mediaId + '_prefCaptionsPitch').val();
-			rate = $('#' + this.mediaId + '_prefCaptionsRate').val();
-			volume = $('#' + this.mediaId + '_prefCaptionsVolume').val();
+			voiceName = document.getElementById(this.mediaId + '_prefCaptionsVoice').value;
+			pitch = document.getElementById(this.mediaId + '_prefCaptionsPitch').value;
+			rate = document.getElementById(this.mediaId + '_prefCaptionsRate').value;
+			volume = document.getElementById(this.mediaId + '_prefCaptionsVolume').value;
 		} else if ( context === 'description' ) {
 			// get settings from global prefs
 			voiceName = this.prefDescVoice;

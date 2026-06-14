@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
 function addEventFunctions(AblePlayer) {
 	// Media events
 	AblePlayer.prototype.onMediaUpdateTime = function (duration, elapsed) {
@@ -42,7 +40,7 @@ function addEventFunctions(AblePlayer) {
 	AblePlayer.prototype.onMediaComplete = function () {
 		// if there's a playlist, advance to next item and start playing
 		if (this.hasPlaylist && !this.cueingPlaylistItem) {
-			if (this.playlistIndex === (this.$playlist.length - 1)) {
+			if (this.playlistIndex === (this.playlist.length - 1)) {
 				// this is the last track in the playlist
 				if (this.loop) {
 					this.cueingPlaylistItem = true; // stopgap to prevent multiple firings
@@ -99,7 +97,7 @@ function addEventFunctions(AblePlayer) {
 			// new source file has just been loaded
 			if (this.hasPlaylist) {
 				// a new source file from the playlist has just been loaded
-				if ((this.playlistIndex !== this.$playlist.length) || this.loop) {
+				if ((this.playlistIndex !== this.playlist.length) || this.loop) {
 					// this is not the last track in the playlist (OR playlist is looping so it doesn't matter)
 					this.playMedia();
 					loadIsComplete = true;
@@ -174,7 +172,7 @@ function addEventFunctions(AblePlayer) {
 			// (and somehow, swappingSrc is false)
 			// this may happen when the previous track ends and next track loads
 			// this same code is called above when swappingSrc is true
-			if ((this.playlistIndex !== this.$playlist.length) || this.loop) {
+			if ((this.playlistIndex !== this.playlist.length) || this.loop) {
 				// this is not the last track in the playlist (OR playlist is looping so it doesn't matter)
 				this.playMedia();
 				loadIsComplete = true;
@@ -196,9 +194,9 @@ function addEventFunctions(AblePlayer) {
 			this.okToPlay = false;
 		}
 		this.refreshControls();
-		if (this.$focusedElement) {
+		if (this.focusedElement) {
 			this.restoreFocus();
-			this.$focusedElement = null;
+			this.focusedElement = null;
 			this.activeMedia = null;
 		}
 	};
@@ -224,15 +222,18 @@ function addEventFunctions(AblePlayer) {
 		// but this function finds a match in the new player
 		// and places focus there
 
-		var classList, $mediaParent;
+		var classList, mediaParent;
 
-		if ( this.$focusedElement && null !== this.activeMedia ) {
-			$mediaParent = $( '#' + this.activeMedia ).closest( '.able' );
-			if ( (this.$focusedElement).attr('role') === 'button' ) {
-				classList = this.$focusedElement.attr("class").split(/\s+/);
-				$.each(classList, function(index, item) {
+		if ( this.focusedElement && null !== this.activeMedia ) {
+			mediaParent = document.getElementById( this.activeMedia ).closest( '.able' );
+			if ( this.focusedElement.getAttribute('role') === 'button' ) {
+				classList = this.focusedElement.getAttribute("class").split(/\s+/);
+				classList.forEach(function(item, index) {
 					if (item.substring(0,20) === 'able-button-handler-') {
-						$mediaParent.find('div.able-controller div.' + item).trigger('focus');
+						var btn = mediaParent.querySelector('div.able-controller div.' + item);
+						if (btn) {
+							btn.focus();
+						}
 					}
 				});
 			}
@@ -245,18 +246,22 @@ function addEventFunctions(AblePlayer) {
 		var thisObj = this;
 
 		// Handle seek bar events.
-		this.seekBar.seekbarDiv.on('startTracking', function (e) {
+		this.seekBar.seekbarDiv.addEventListener('startTracking', function (e) {
 			thisObj.pausedBeforeTracking = thisObj.paused;
 			thisObj.pauseMedia();
-		}).on('tracking', function (e, position) {
+		});
+		this.seekBar.seekbarDiv.addEventListener('tracking', function (e) {
 			// Scrub transcript, captions, and metadata.
+			var position = e.detail;
 			thisObj.highlightTranscript(position);
 			thisObj.updateCaption(position);
 			thisObj.showDescription(position);
 			thisObj.updateChapter(thisObj.convertChapterTimeToVideoTime(position));
 			thisObj.updateMeta(position);
 			thisObj.refreshControls();
-		}).on('stopTracking', function (e, position) {
+		});
+		this.seekBar.seekbarDiv.addEventListener('stopTracking', function (e) {
+			var position = e.detail;
 			if (thisObj.useChapterTimes) {
 				thisObj.seekTo(thisObj.convertChapterTimeToVideoTime(position));
 			} else {
@@ -272,7 +277,7 @@ function addEventFunctions(AblePlayer) {
 
 	AblePlayer.prototype.onClickPlayerButton = function (el) {
 		var whichButton, prefsPopup;
-		whichButton = this.getButtonNameFromClass($(el).attr('class'));
+		whichButton = this.getButtonNameFromClass(el.getAttribute('class'));
 		switch ( whichButton ) {
 			case 'play':
 				this.clickedPlay = true;
@@ -331,12 +336,12 @@ function addEventFunctions(AblePlayer) {
 				}
 				break;
 			case 'preferences':
-				if ($(el).attr('data-prefs-popup') === 'menu') {
+				if (el.getAttribute('data-prefs-popup') === 'menu') {
 					this.handlePrefsClick();
 				} else {
 					this.showingPrefsDialog = true; // stopgap
 					this.closePopups();
-					prefsPopup = $(el).attr('data-prefs-popup');
+					prefsPopup = el.getAttribute('data-prefs-popup');
 					if (prefsPopup === 'keyboard') {
 						this.keyboardPrefsDialog.show();
 					} else if (prefsPopup === 'captions') {
@@ -384,7 +389,7 @@ function addEventFunctions(AblePlayer) {
 		// that is likely to need supported keystrokes, including space
 		var activeElement = AblePlayer.getActiveDOMElement();
 
-		return ($(activeElement).prop('tagName') === 'INPUT') ? false : defaultReturn;
+		return (activeElement && activeElement.tagName === 'INPUT') ? false : defaultReturn;
 	};
 
 	AblePlayer.prototype.onPlayerKeyPress = function (e) {
@@ -400,14 +405,14 @@ function addEventFunctions(AblePlayer) {
 		// including removal of the "media player" design pattern. There's an issue about that:
 		// https://github.com/w3c/aria-practices/issues/27
 
-		var key, $thisElement;
+		var key, thisElement;
 
 		// Convert to lower case.
 		key = e.key;
-		$thisElement = $(document.activeElement);
+		thisElement = document.activeElement;
 
 		if (key === 'Escape') {
-			if (this.$transcriptArea && $.contains(this.$transcriptArea[0],$thisElement[0]) && !this.hidingPopup) {
+			if (this.transcriptArea && this.transcriptArea.contains(thisElement) && !this.hidingPopup) {
 				// This element is part of transcript area.
 				this.handleTranscriptToggle();
 				return false;
@@ -420,10 +425,10 @@ function addEventFunctions(AblePlayer) {
 		// Only use keypress to control player if focus is NOT on a form field or contenteditable element
 		// (or a textarea element with player in stenoMode)
 		if (!(
-			$(':focus').is('[contenteditable]') ||
-			$(':focus').is('input') ||
-			($(':focus').is('textarea') && !this.stenoMode) ||
-			$(':focus').is('select') ||
+			thisElement.matches('[contenteditable]') ||
+			thisElement.matches('input') ||
+			(thisElement.matches('textarea') && !this.stenoMode) ||
+			thisElement.matches('select') ||
 			e.target.hasAttribute('contenteditable') ||
 			e.target.tagName === 'INPUT' ||
 			(e.target.tagName === 'TEXTAREA' && !this.stenoMode) ||
@@ -431,16 +436,16 @@ function addEventFunctions(AblePlayer) {
 		)){
 			if (key === 'Escape') {
 				this.closePopups();
-				this.$tooltipDiv.hide();
+				this.tooltipDiv.style.display = 'none';
 				this.seekBar.hideSliderTooltips();
 			} else if (key === ' ') {
 				// disable spacebar support for play/pause toggle as of 4.2.10
 				// spacebar should not be handled everywhere on the page, since users use that to scroll the page
 				// when the player has focus, most controls are buttons so spacebar should be used to trigger the buttons
-				if ($thisElement.attr('role') === 'button') {
+				if (thisElement.getAttribute('role') === 'button') {
 					// register a click on this element
 					e.preventDefault();
-					$thisElement.trigger( 'click' );
+					thisElement.click();
 				}
 			} else if ( key === 'p' ) {
 				if (this.usingModifierKeys(e)) {
@@ -503,12 +508,12 @@ function addEventFunctions(AblePlayer) {
 					this.handlePrefsClick();
 				}
 			} else if (key === 'Enter') {
-				if ($thisElement.attr('role') === 'button' || $thisElement.prop('tagName') === 'SPAN') {
+				if (thisElement.getAttribute('role') === 'button' || thisElement.tagName === 'SPAN') {
 					// register a click on this element
 					// if it's a transcript span the transcript span click handler will take over
-					$thisElement.trigger( 'click' );
-				} else if ($thisElement.prop('tagName') === 'LI') {
-					$thisElement.trigger( 'click' );
+					thisElement.click();
+				} else if (thisElement.tagName === 'LI') {
+					thisElement.click();
 				}
 			}
 		}
@@ -523,98 +528,97 @@ function addEventFunctions(AblePlayer) {
 		// Able Player gets around this by automatically loading media in some circumstances
 		// (see initialize.js > initPlayer() for details)
 
-		this.$media
-			.on('emptied',function() {
-				// do something
-			})
-			.on('loadedmetadata',function() {
-				// should be able to get duration now
-				thisObj.duration = thisObj.media.duration;
-			})
-			.on('canplay',function() {
-				// previously handled seeking to startTime here
-				// but it's probably safer to wait for canplaythrough
-				// so we know player can seek ahead to anything
-			})
-			.on('canplaythrough',function() {
-				// previously onMediaNewSourceLoad() was called on 'loadedmetadata'
-				// but that proved to be too soon for some of this functionality.
-				// TODO: Monitor this. If moving it here causes performance issues,
-				// consider moving some or all of this functionality to 'canplay'
-				thisObj.onMediaNewSourceLoad();
-			})
-			.on('play',function() {
-				// 'play' indicates that the play method has been called.
-				// Don't do anything until playback has actually started.
-			})
-			.on('playing',function() {
-				// 'playing' indicates that the video is playing.
-				thisObj.playing = true;
-				thisObj.paused = false;
-				thisObj.swappingSrc = false;
-				thisObj.refreshControls('playpause');
-			})
-			.on('ended',function() {
-				thisObj.playing = false;
-				thisObj.paused = true;
-				thisObj.onMediaComplete();
-			})
-			.on('progress', function() {
-				thisObj.refreshControls('timeline');
-			})
-			.on('waiting',function() {
-				// could fire a notification about loss of data.
-			})
-			.on('durationchange',function() {
-				// Display new duration.
-				thisObj.refreshControls('timeline');
-			})
-			.on('timeupdate',function() {
-				thisObj.onMediaUpdateTime(); // includes a call to refreshControls()
-			})
-			.on('pause',function() {
-				if (!thisObj.clickedPlay) {
-					// 'pause' was triggered automatically, not initiated by user
-					// this happens in some browsers when swapping source
-					// (e.g., between tracks in a playlist or swapping description)
-					if (thisObj.hasPlaylist || thisObj.swappingSrc) {
-						// do NOT set playing to false.
-						// doing so prevents continual playback after new track is loaded
-					} else {
-						thisObj.playing = false;
-						thisObj.paused = true;
-					}
+		this.media.addEventListener('emptied',function() {
+			// do something
+		});
+		this.media.addEventListener('loadedmetadata',function() {
+			// should be able to get duration now
+			thisObj.duration = thisObj.media.duration;
+		});
+		this.media.addEventListener('canplay',function() {
+			// previously handled seeking to startTime here
+			// but it's probably safer to wait for canplaythrough
+			// so we know player can seek ahead to anything
+		});
+		this.media.addEventListener('canplaythrough',function() {
+			// previously onMediaNewSourceLoad() was called on 'loadedmetadata'
+			// but that proved to be too soon for some of this functionality.
+			// TODO: Monitor this. If moving it here causes performance issues,
+			// consider moving some or all of this functionality to 'canplay'
+			thisObj.onMediaNewSourceLoad();
+		});
+		this.media.addEventListener('play',function() {
+			// 'play' indicates that the play method has been called.
+			// Don't do anything until playback has actually started.
+		});
+		this.media.addEventListener('playing',function() {
+			// 'playing' indicates that the video is playing.
+			thisObj.playing = true;
+			thisObj.paused = false;
+			thisObj.swappingSrc = false;
+			thisObj.refreshControls('playpause');
+		});
+		this.media.addEventListener('ended',function() {
+			thisObj.playing = false;
+			thisObj.paused = true;
+			thisObj.onMediaComplete();
+		});
+		this.media.addEventListener('progress', function() {
+			thisObj.refreshControls('timeline');
+		});
+		this.media.addEventListener('waiting',function() {
+			// could fire a notification about loss of data.
+		});
+		this.media.addEventListener('durationchange',function() {
+			// Display new duration.
+			thisObj.refreshControls('timeline');
+		});
+		this.media.addEventListener('timeupdate',function() {
+			thisObj.onMediaUpdateTime(); // includes a call to refreshControls()
+		});
+		this.media.addEventListener('pause',function() {
+			if (!thisObj.clickedPlay) {
+				// 'pause' was triggered automatically, not initiated by user
+				// this happens in some browsers when swapping source
+				// (e.g., between tracks in a playlist or swapping description)
+				if (thisObj.hasPlaylist || thisObj.swappingSrc) {
+					// do NOT set playing to false.
+					// doing so prevents continual playback after new track is loaded
 				} else {
 					thisObj.playing = false;
 					thisObj.paused = true;
 				}
-				thisObj.clickedPlay = false; // done with this variable
-				thisObj.onMediaPause(); // includes a call to refreshControls()
-			})
-			.on('ratechange',function() {
-				// do something
-			})
-			.on('volumechange',function() {
-				thisObj.volume = thisObj.getVolume();
-			})
-			.on('error',function() {
-				if (thisObj.debug) {
-					switch (thisObj.media.error.code) {
-						case 1:
-							console.log('HTML5 Media Error: MEDIA_ERR_ABORTED');
-							break;
-						case 2:
-							console.log('HTML5 Media Error: MEDIA_ERR_NETWORK ');
-							break;
-						case 3:
-							console.log('HTML5 Media Error: MEDIA_ERR_DECODE ');
-							break;
-						case 4:
-							console.log('HTML5 Media Error: MEDIA_ERR_SRC_NOT_SUPPORTED ');
-							break;
-					}
+			} else {
+				thisObj.playing = false;
+				thisObj.paused = true;
+			}
+			thisObj.clickedPlay = false; // done with this variable
+			thisObj.onMediaPause(); // includes a call to refreshControls()
+		});
+		this.media.addEventListener('ratechange',function() {
+			// do something
+		});
+		this.media.addEventListener('volumechange',function() {
+			thisObj.volume = thisObj.getVolume();
+		});
+		this.media.addEventListener('error',function() {
+			if (thisObj.debug) {
+				switch (thisObj.media.error.code) {
+					case 1:
+						console.log('HTML5 Media Error: MEDIA_ERR_ABORTED');
+						break;
+					case 2:
+						console.log('HTML5 Media Error: MEDIA_ERR_NETWORK ');
+						break;
+					case 3:
+						console.log('HTML5 Media Error: MEDIA_ERR_DECODE ');
+						break;
+					case 4:
+						console.log('HTML5 Media Error: MEDIA_ERR_SRC_NOT_SUPPORTED ');
+						break;
 				}
-			});
+			}
+		});
 	};
 
 	AblePlayer.prototype.addVimeoListeners = function () {
@@ -723,7 +727,7 @@ function addEventFunctions(AblePlayer) {
 		var thisObj = this;
 
 		// Appropriately resize media player for full screen.
-		$(window).on('resize',function () {
+		window.addEventListener('resize',function () {
 			thisObj.resizePlayer();
 		});
 
@@ -732,12 +736,12 @@ function addEventFunctions(AblePlayer) {
 		// but MutationObserver works in most browsers (but NOT in IE 10 or earlier)
 		// http://caniuse.com/#feat=mutationobserver
 		if (window.MutationObserver) {
-			var target = this.$ableDiv[0];
+			var target = this.ableDiv;
 			var observer = new MutationObserver(function(mutations) {
 				mutations.forEach(function(mutation) {
 					if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
 						// the player's style attribute has changed. Check to see if it's visible
-						if (thisObj.$ableDiv.is(':visible')) {
+						if (thisObj.ableDiv.offsetParent !== null) {
 							thisObj.refreshControls();
 						}
 					}
@@ -760,18 +764,26 @@ function addEventFunctions(AblePlayer) {
 		}
 
 		// handle clicks on player buttons
-		this.$controllerDiv.find('div[role="button"]').on('click',function(e){
-			e.stopPropagation();
-			thisObj.onClickPlayerButton(this);
+		Array.from(this.controllerDiv.querySelectorAll('div[role="button"]')).forEach(function(button) {
+			button.addEventListener('click',function(e){
+				e.stopPropagation();
+				thisObj.onClickPlayerButton(this);
+			});
 		});
 
 		// handle clicks (left only) anywhere on the page. If any popups are open, close them.
-		$('body').on('click', function(e) {
+		document.body.addEventListener('click', function(e) {
 
 			if (e.button !== 0) { // not a left click
 				return false;
 			}
-			if ($('.able-popup:visible').length || $('.able-volume-slider:visible').length ) {
+			var visiblePopups = Array.from(document.querySelectorAll('.able-popup')).filter(function(el) {
+				return el.offsetParent !== null || el.getClientRects().length;
+			});
+			var visibleSliders = Array.from(document.querySelectorAll('.able-volume-slider')).filter(function(el) {
+				return el.offsetParent !== null || el.getClientRects().length;
+			});
+			if (visiblePopups.length || visibleSliders.length ) {
 				// at least one popup is visible
 				thisObj.closePopups();
 			}
@@ -783,7 +795,7 @@ function addEventFunctions(AblePlayer) {
 		});
 
 		// handle mouse movement over player; make controls visible again if hidden
-		this.$ableDiv.on('mousemove',function() {
+		this.ableDiv.addEventListener('mousemove',function() {
 			if (thisObj.controlsHidden) {
 				thisObj.fadeControls('in');
 				thisObj.controlsHidden = false;
@@ -809,7 +821,7 @@ function addEventFunctions(AblePlayer) {
 		});
 
 		// if user presses a key from anywhere on the page, show player controls
-		$(document).on( 'keydown', function(e) {
+		document.addEventListener( 'keydown', function(e) {
 			if (thisObj.controlsHidden) {
 				thisObj.fadeControls('in');
 				thisObj.controlsHidden = false;
@@ -837,7 +849,7 @@ function addEventFunctions(AblePlayer) {
 
 		// handle local keydown events if this isn't the only player on the page;
 		// otherwise these are dispatched by global handler (see ableplayer-base.js)
-		this.$ableDiv.on( 'keydown', function (e) {
+		this.ableDiv.addEventListener( 'keydown', function (e) {
 			if (!AblePlayer.hasSingleInstance()) {
 				thisObj.onPlayerKeyPress(e);
 			}
@@ -845,15 +857,15 @@ function addEventFunctions(AblePlayer) {
 
 		// If stenoMode is enabled in an iframe, handle keydown events from the iframe
 		if (this.stenoMode && (typeof this.stenoFrameContents !== 'undefined')) {
-			this.stenoFrameContents.on('keydown',function(e) {
+			this.stenoFrameContents.addEventListener('keydown',function(e) {
 				thisObj.onPlayerKeyPress(e);
 			});
-		};
+		}
 
-		// transcript is not a child of this.$ableDiv
+		// transcript is not a child of this.ableDiv
 		// therefore, must be added separately
-		if (this.$transcriptArea) {
-			this.$transcriptArea.on('keydown',function (e) {
+		if (this.transcriptArea) {
+			this.transcriptArea.addEventListener('keydown',function (e) {
 				if (!AblePlayer.hasSingleInstance()) {
 					thisObj.onPlayerKeyPress(e);
 				}
@@ -861,19 +873,21 @@ function addEventFunctions(AblePlayer) {
 		}
 
 		// handle clicks on playlist items
-		if (this.$playlist) {
-			this.$playlist.on( 'click', function(e) {
-				if (!thisObj.userClickedPlaylist) {
-					// stopgap in case multiple clicks are fired on the same playlist item
-					thisObj.userClickedPlaylist = true; // will be set to false after new src is loaded & canplaythrough is triggered
-					thisObj.playlistIndex = $(this).index();
-					thisObj.cuePlaylistItem(thisObj.playlistIndex);
-				}
+		if (this.playlist) {
+			this.playlist.forEach(function(li) {
+				li.addEventListener( 'click', function(e) {
+					if (!thisObj.userClickedPlaylist) {
+						// stopgap in case multiple clicks are fired on the same playlist item
+						thisObj.userClickedPlaylist = true; // will be set to false after new src is loaded & canplaythrough is triggered
+						thisObj.playlistIndex = Array.from(this.parentElement.children).indexOf(this);
+						thisObj.cuePlaylistItem(thisObj.playlistIndex);
+					}
+				});
 			});
 		}
 
 		// Also play/pause when clicking on the media.
-		this.$media.on( 'click', function () {
+		this.media.addEventListener( 'click', function () {
 			thisObj.handlePlay();
 		});
 

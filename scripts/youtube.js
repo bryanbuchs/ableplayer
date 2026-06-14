@@ -1,5 +1,4 @@
 /* global YT */
-import $ from 'jquery';
 
 function addYoutubeFunctions(AblePlayer) {
 
@@ -31,7 +30,7 @@ function addYoutubeFunctions(AblePlayer) {
 			}
 
 			// Otherwise, keeping waiting for script load event...
-			$('body').on('youTubeIframeAPIReady', function () {
+			document.body.addEventListener('youTubeIframeAPIReady', function () {
 				thisObj.finalizeYoutubeInit().then(function() {
 					deferred.resolve();
 				});
@@ -50,7 +49,7 @@ function addYoutubeFunctions(AblePlayer) {
 		thisObj = this;
 		containerId = this.mediaId + '_youtube';
 
-		this.$mediaContainer.prepend($('<div>').attr('id', containerId));
+		this.mediaContainer.prepend(this.createEl('div', { id: containerId }));
 
 		// cc_load_policy:
 		// 0 - show captions depending on user's preference on YouTube
@@ -133,8 +132,8 @@ function addYoutubeFunctions(AblePlayer) {
 							if (thisObj.hasSignLanguage && thisObj.signVideo) {
 								thisObj.signVideo.pause(true);
 							}
-							if (typeof thisObj.$posterImg !== 'undefined') {
-								thisObj.$posterImg.show();
+							if (typeof thisObj.posterImg !== 'undefined') {
+								thisObj.posterImg.style.display = '';
 							}
 							thisObj.stoppingYouTube = false;
 							thisObj.seeking = false;
@@ -163,7 +162,7 @@ function addYoutubeFunctions(AblePlayer) {
 		if (!this.hasPlaylist) {
 			// remove the media element, since YouTube replaces that with its own element in an iframe
 			// this is handled differently for playlists. See buildplayer.js > cuePlaylistItem()
-			this.$media.remove();
+			this.media.remove();
 		}
 		return promise;
 	};
@@ -172,14 +171,14 @@ function addYoutubeFunctions(AblePlayer) {
 
 		// The YouTube iframe API does not have a getSize() of equivalent method
 		// so, need to get dimensions from YouTube's iframe
-		var $iframe, width, height;
+		var iframe, width, height;
 
-		$iframe = this.$ableWrapper.find('iframe');
-		if (typeof $iframe !== 'undefined') {
-			if ($iframe.prop('width')) {
-				width = $iframe.prop('width');
-				if ($iframe.prop('height')) {
-					height = $iframe.prop('height');
+		iframe = this.ableWrapper.querySelector('iframe');
+		if (iframe !== null) {
+			if (iframe.width) {
+				width = iframe.width;
+				if (iframe.height) {
+					height = iframe.height;
 					this.resizePlayer(width,height);
 				}
 			}

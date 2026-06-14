@@ -1,4 +1,3 @@
- import $ from 'jquery';
 import DOMPurify from 'dompurify';
 
  function addInitializeFunctions(AblePlayer) {
@@ -31,21 +30,18 @@ import DOMPurify from 'dompurify';
 		// therefore, need to create a temporary element then remove it after color is determined
 		// Temp element must be added to the DOM or WebKit can't retrieve its CSS properties
 
-		var $elements, i, $el, bgColor, rgb, red, green, blue, luminance, iconColor;
+		var elements, i, el, bgColor, rgb, red, green, blue, luminance, iconColor;
 
-		$elements = ['controller', 'toolbar'];
-		for (i=0; i<$elements.length; i++) {
-			if ($elements[i] == 'controller') {
-				$el =	 $('<div>', {
-					'class': 'able-controller'
-				}).hide();
-			} else if ($elements[i] === 'toolbar') {
-				$el =	 $('<div>', {
-					'class': 'able-window-toolbar'
-				}).hide();
+		elements = ['controller', 'toolbar'];
+		for (i=0; i<elements.length; i++) {
+			if (elements[i] == 'controller') {
+				el = this.createEl('div', { 'class': 'able-controller' });
+			} else if (elements[i] === 'toolbar') {
+				el = this.createEl('div', { 'class': 'able-window-toolbar' });
 			}
-			$('body').append($el);
-			bgColor = $el.css('background-color');
+			el.style.display = 'none';
+			document.body.append(el);
+			bgColor = window.getComputedStyle(el).backgroundColor;
 			// bgColor is a string in the form 'rgb(R, G, B)', perhaps with a 4th item for alpha;
 			// split the 3 or 4 channels into an array
 			rgb = bgColor.replace(/[^\d,]/g, '').split(',');
@@ -56,12 +52,12 @@ import DOMPurify from 'dompurify';
 			// range is 1 - 255; therefore 125 is the tipping point
 			iconColor = (luminance < 125) ? 'white' : 'black';
 
-			if ($elements[i] === 'controller') {
+			if (elements[i] === 'controller') {
 				this.iconColor = iconColor;
-			} else if ($elements[i] === 'toolbar') {
+			} else if (elements[i] === 'toolbar') {
 				this.toolbarIconColor = iconColor;
 			}
-			$el.remove();
+			el.remove();
 		}
 	};
 
@@ -226,14 +222,17 @@ import DOMPurify from 'dompurify';
 		this.autoScrollTranscript = true;
 		//this.autoScrollTranscript = this.getPref(autoScrollTranscript); // (doesn't work)
 
-		// Bootstrap from this.media possibly being an ID or other selector.
-		this.$media = $(this.media).first();
-		this.media = this.$media[0];
+		// Bootstrap from this.media possibly being a selector or jQuery object.
+		if (typeof this.media === 'string') {
+			this.media = document.querySelector(this.media);
+		} else if (this.media && this.media.jquery) {
+			this.media = this.media[0];
+		}
 
 		// Set media type to 'audio' or 'video'; this determines some of the behavior of player creation.
-		if (this.$media.is('audio')) {
+		if (this.media.matches('audio')) {
 			this.mediaType = 'audio';
-		} else if (this.$media.is('video')) {
+		} else if (this.media.matches('video')) {
 			this.mediaType = 'video';
 		} else {
 			// Able Player was initialized with some element other than <video> or <audio>
@@ -242,7 +241,7 @@ import DOMPurify from 'dompurify';
 			return promise;
 		}
 
-		this.$sources = this.$media.find('source');
+		this.sources = Array.from(this.media.querySelectorAll('source'));
 
 		this.player = this.getPlayer();
 		if (!this.player) {
@@ -270,12 +269,12 @@ import DOMPurify from 'dompurify';
 		var deferred = new this.defer();
 		var promise = deferred.promise();
 
-		if (this.$media.attr('id')) {
-			this.mediaId = this.$media.attr('id');
+		if (this.media.getAttribute('id')) {
+			this.mediaId = this.media.getAttribute('id');
 		} else {
 			// Ensure the base media element always has an ID.
 			this.mediaId = "ableMediaId_" + this.ableIndex;
-			this.$media.attr('id', this.mediaId);
+			this.media.setAttribute('id', this.mediaId);
 		}
 		deferred.resolve();
 		return promise;
@@ -289,43 +288,43 @@ import DOMPurify from 'dompurify';
 
 		this.hasPlaylist = false; // will change to true if a matching playlist is found
 
-		$('.able-playlist').each(function() {
-			if ($(this).data('player') === thisObj.mediaId) {
+		document.querySelectorAll('.able-playlist').forEach(function(playlistEl) {
+			if (thisObj.getData(playlistEl, 'player') === thisObj.mediaId) {
 				// this is the playlist for the current player
 				thisObj.hasPlaylist = true;
-				// If using an embedded player, we'll replace $playlist with the clone later.
-				thisObj.$playlist = $(this).find('li');
+				// If using an embedded player, we'll replace playlist with the clone later.
+				thisObj.playlist = Array.from(playlistEl.querySelectorAll('li'));
 
 				// check to see if list item has YouTube as its source
 				// if it does, inject a thumbnail from YouTube
-				var $youTubeVideos = $(this).find('li[data-youtube-id]');
-				$youTubeVideos.each(function() {
-					var youTubeId = DOMPurify.sanitize( $(this).attr('data-youtube-id') );
+				playlistEl.querySelectorAll('li[data-youtube-id]').forEach(function(li) {
+					var youTubeId = DOMPurify.sanitize( li.getAttribute('data-youtube-id') );
 					var youTubePoster = thisObj.getYouTubePosterUrl(youTubeId,'120');
-					var $youTubeImg = $('<img>',{
-						'src': youTubePoster,
-						'alt': ''
-					});
-					$(this).find('button').prepend($youTubeImg);
+					var youTubeImg = thisObj.createEl('img', { 'src': youTubePoster, 'alt': '' });
+					var ytButton = li.querySelector('button');
+					if (ytButton) {
+						ytButton.prepend(youTubeImg);
+					}
 				});
 
 				// check to see if list item has Vimeo as its source
 				// if it does, inject a thumbnail from Vimeo
-				var $vimeoVideos = $(this).find('li[data-vimeo-id]');
-				$vimeoVideos.each(function() {
-					var vimeoId = $(this).attr('data-vimeo-id');
+				playlistEl.querySelectorAll('li[data-vimeo-id]').forEach(function(li) {
+					var vimeoId = li.getAttribute('data-vimeo-id');
 					var vimeoPoster = thisObj.getVimeoPosterUrl(vimeoId,'120');
-					var $vimeoImg = $('<img>',{
-						'src': vimeoPoster,
-						'alt': ''
-					});
-					$(this).find('button').prepend($vimeoImg);
+					var vimeoImg = thisObj.createEl('img', { 'src': vimeoPoster, 'alt': '' });
+					var vimeoButton = li.querySelector('button');
+					if (vimeoButton) {
+						vimeoButton.prepend(vimeoImg);
+					}
 				});
 
 				// add accessibility to the list markup
-				$(this).find('li span').attr('aria-hidden','true');
+				playlistEl.querySelectorAll('li span').forEach(function(span) {
+					span.setAttribute('aria-hidden','true');
+				});
 				thisObj.playlistIndex = 0;
-				var dataEmbedded = $(this).data('embedded');
+				var dataEmbedded = thisObj.getData(playlistEl, 'embedded');
 				// is playlist embedded within player?
 				thisObj.playlistEmbed = (typeof dataEmbedded !== 'undefined' && dataEmbedded !== false) ? true : false;
 			}
@@ -339,15 +338,17 @@ import DOMPurify from 'dompurify';
 		}
 		if (this.hasPlaylist && this.playlistEmbed) {
 			// Copy the playlist out of the dom, so we can reinject when we build the player.
-			var parent = this.$playlist.parent();
-			this.$playlistDom = parent.clone();
-			parent.remove();
+			var parent = this.playlist.length ? this.playlist[0].parentElement : null;
+			this.playlistDom = parent ? parent.cloneNode(true) : null;
+			if (parent) {
+				parent.remove();
+			}
 		}
-		if (this.hasPlaylist && this.$sources.length === 0) {
+		if (this.hasPlaylist && this.sources.length === 0) {
 			// no source elements were provided. Construct them from the first playlist item
 			this.cuePlaylistItem(0);
-			// redefine this.$sources now that media contains one or more <source> elements
-			this.$sources = this.$media.find('source');
+			// redefine this.sources now that media contains one or more <source> elements
+			this.sources = Array.from(this.media.querySelectorAll('source'));
 		}
 	};
 
@@ -397,7 +398,7 @@ import DOMPurify from 'dompurify';
 
 					thisObj.setupTracks().then(function() {
 						if (thisObj.hasClosedDesc) {
-							if (!thisObj.$descDiv || (thisObj.$descDiv && !($.contains(thisObj.$ableDiv[0], thisObj.$descDiv[0])))) {
+							if (!thisObj.descDiv || (thisObj.descDiv && !thisObj.ableDiv.contains(thisObj.descDiv))) {
 								// descDiv either doesn't exist, or exists in an orphaned state
 								// Either way, it needs to be rebuilt...
 								thisObj.injectTextDescriptionArea();
@@ -409,8 +410,8 @@ import DOMPurify from 'dompurify';
 
 							thisObj.initStenoFrame().then(function() {
 
-								if (thisObj.stenoMode && thisObj.$stenoFrame) {
-									thisObj.stenoFrameContents = thisObj.$stenoFrame.contents();
+								if (thisObj.stenoMode && thisObj.stenoFrame) {
+									thisObj.stenoFrameContents = thisObj.stenoFrame.contentDocument;
 								}
 								thisObj.getMediaTimes().then(function(mediaTimes) {
 
@@ -456,7 +457,7 @@ import DOMPurify from 'dompurify';
 									// However, the media needs to load for us to get the media's duration
 									if (thisObj.player === 'html5') {
 										if (!thisObj.loadingMedia) {
-											thisObj.$media[0].load();
+											thisObj.media.load();
 											thisObj.loadingMedia = true;
 										}
 									}
@@ -521,14 +522,14 @@ import DOMPurify from 'dompurify';
 		deferred = new this.defer();
 		promise = deferred.promise();
 
-		if (this.stenoMode && this.$stenoFrame) {
+		if (this.stenoMode && this.stenoFrame) {
 
-			if (this.$stenoFrame[0].contentWindow,document.readyState == 'complete') {
+			if (this.stenoFrame.contentWindow,document.readyState == 'complete') {
 				// iframe has already loaded
 				deferred.resolve();
 			} else {
 				// iframe has not loaded. Wait for it.
-				this.$stenoFrame.on('load',function() {
+				this.stenoFrame.addEventListener('load',function() {
 					deferred.resolve();
 				});
 			}
@@ -599,8 +600,11 @@ import DOMPurify from 'dompurify';
 			}
 			if (typeof this.captionLang !== 'undefined') {
 				// reset transcript selected <option> to this.captionLang
-				if (this.$transcriptLanguageSelect) {
-					this.$transcriptLanguageSelect.find('option[lang=' + this.captionLang + ']').prop('selected',true);
+				if (this.transcriptLanguageSelect) {
+					var langOption = this.transcriptLanguageSelect.querySelector('option[lang=' + this.captionLang + ']');
+					if (langOption) {
+						langOption.selected = true;
+					}
 				}
 				// sync all other tracks to this same languge
 				this.syncTrackLanguages('init',this.captionLang);
@@ -647,7 +651,7 @@ import DOMPurify from 'dompurify';
 	// Sets media/track/source attributes; is called whenever player is recreated since $media may have changed.
 	AblePlayer.prototype.setMediaAttributes = function () {
 		// Firefox puts videos in tab order; remove.
-		this.$media.attr('tabindex', -1);
+		this.media.setAttribute('tabindex', -1);
 
 		// Keep native player from displaying captions/subtitles by setting textTrack.mode='disabled'
 		// https://dev.w3.org/html5/spec-author-view/video.html#text-track-mode
@@ -655,7 +659,7 @@ import DOMPurify from 'dompurify';
 		// As of July 2025, 96% supported per https://caniuse.com/?search=text-track-mode.
 		// Workaround for non-supporting browsers is to remove default attribute
 		// We're doing that too in track.js > setupCaptions()
-		var textTracks = this.$media.get(0).textTracks;
+		var textTracks = this.media.textTracks;
 		if (textTracks) {
 			var i = 0;
 			while (i < textTracks.length) {

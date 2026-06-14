@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import DOMPurify from 'dompurify';
 
 function addSearchFunctions(AblePlayer) {
@@ -16,7 +15,8 @@ function addSearchFunctions(AblePlayer) {
     if (this.searchDiv && this.searchString) {
       // sanitize search string
       var cleanSearchString = DOMPurify.sanitize(this.searchString);
-      if ($("#" + this.SearchDiv)) {
+      var searchContainer = document.getElementById(this.searchDiv);
+      if (searchContainer) {
         var searchStringHtml = "<p>" + this.translate( 'resultsSummary1', 'You searched for:') + ' ';
         searchStringHtml +=
           '<span id="able-search-term-echo">' + cleanSearchString + "</span>";
@@ -25,53 +25,50 @@ function addSearchFunctions(AblePlayer) {
           cleanSearchString,
           this.searchIgnoreCaps
         );
+        searchContainer.innerHTML = searchStringHtml;
         if (resultsArray.length > 0) {
-          var $resultsSummary = $("<p>", {
+          var resultsSummary = this.createEl("p", {
             class: "able-search-results-summary",
           });
           var resultsSummaryText = this.translate( 'resultsSummary2', 'Found %1 matching items.', [ '<strong>' + resultsArray.length + '</strong>' ] );
           resultsSummaryText += ' ' + this.translate( 'resultsSummary3', 'Click the time associated with any item to play the video from that point.' );
-          $resultsSummary.html( resultsSummaryText );
-          var $resultsList = $("<ul>");
+          resultsSummary.innerHTML = resultsSummaryText;
+          var resultsList = this.createEl("ul");
           for (var i = 0; i < resultsArray.length; i++) {
             var resultId = "aria-search-result-" + i;
-            var $resultsItem = $("<li>", {});
+            var resultsItem = this.createEl("li");
             var itemStartTime = this.secondsToTime(resultsArray[i]["start"]);
             var itemLabel =
               this.translate( 'searchButtonLabel', 'Play at %1', [ itemStartTime["title"] ] );
-            var itemStartSpan = $("<button>", {
+            var itemStartSpan = this.createEl("button", {
               class: "able-search-results-time",
               "data-start": resultsArray[i]["start"],
               "aria-label": itemLabel,
               "aria-describedby": resultId,
+              text: itemStartTime["value"],
             });
-            itemStartSpan.text(itemStartTime["value"]);
-            // add a listener for clisk on itemStart
-            itemStartSpan.on("click", function (e) {
+            // add a listener for click on itemStart
+            itemStartSpan.addEventListener("click", function () {
               thisObj.seekTrigger = "search";
-              var spanStart = parseFloat($(this).attr("data-start"));
+              var spanStart = parseFloat(this.getAttribute("data-start"));
               // Add a tiny amount so that we're inside the span.
               spanStart += 0.01;
               thisObj.seeking = true;
               thisObj.seekTo(spanStart);
             });
 
-            var itemText = $("<span>", {
+            var itemText = this.createEl("span", {
               class: "able-search-result-text",
               id: resultId,
+              html: '...' + resultsArray[i]["caption"] + '...',
             });
-            itemText.html('...' + resultsArray[i]["caption"] + '...');
-            $resultsItem.append(itemStartSpan, itemText);
-            $resultsList.append($resultsItem);
+            resultsItem.append(itemStartSpan, itemText);
+            resultsList.append(resultsItem);
           }
-          $('#' + this.searchDiv)
-            .html(searchStringHtml)
-            .append($resultsSummary, $resultsList);
+          searchContainer.append(resultsSummary, resultsList);
         } else {
-          var noResults = $('<p>').text( this.translate( 'noResultsFound', 'No results found.' ) );
-          $('#' + this.searchDiv)
-            .html(searchStringHtml)
-            .append(noResults);
+          var noResults = this.createEl('p', { text: this.translate( 'noResultsFound', 'No results found.' ) });
+          searchContainer.append(noResults);
         }
       }
     }
@@ -95,14 +92,14 @@ function addSearchFunctions(AblePlayer) {
         c = 0;
         for (i = 0; i < captions.length; i++) {
           if (
-            $.inArray(captions[i].components.children[0]["type"], [
+            [
               "string",
               "i",
               "b",
               "u",
               "v",
               "c",
-            ]) !== -1
+            ].indexOf(captions[i].components.children[0]["type"]) !== -1
           ) {
             caption = this.flattenCueForCaption(captions[i]);
             var captionNormalized = ignoreCaps

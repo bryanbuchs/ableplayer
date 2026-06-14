@@ -1,150 +1,111 @@
-import $ from 'jquery';
+// Accessible modal dialog backed by the native <dialog> element.
+//
+// The native <dialog> (opened with showModal()) provides, for free, the behavior
+// this class used to hand-roll: focus trapping, Escape-to-dismiss, inert
+// background, top-layer stacking, a ::backdrop, and focus restore on close.
+//
+// `modalElement` MUST be a native <dialog> element. Callers build their content
+// inside a <dialog> (see preference.js, dragdrop.js, transcript.js) and pass it here.
+function AccessibleDialog( modalElement, returnElement, title, closeButtonLabel) {
 
-// Outdented for a simpler diff
-	var focusableElementsSelector = "a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, *[tabindex], *[contenteditable]";
+	this.title = title;
+	this.closeButtonLabel = closeButtonLabel;
+	this.focusedElementBeforeModal = returnElement;
+	this.baseId = modalElement.getAttribute('id') || Math.floor(Math.random() * 1000000000).toString();
+	var thisObj = this;
+	var modal = modalElement;
+	this.modal = modal;
 
-	// Based on the incredible accessible modal dialog.
-	function AccessibleDialog( modalDiv, $returnElement, title, closeButtonLabel) {
+	modal.classList.add('able-modal-dialog');
 
-		this.title = title;
-		this.closeButtonLabel = closeButtonLabel;
-		this.focusedElementBeforeModal = $returnElement;
-		this.baseId = $(modalDiv).attr('id') || Math.floor(Math.random() * 1000000000).toString();
-		var thisObj = this;
-		var modal = modalDiv;
-		this.modal = modal;
-
-		modal.addClass('able-modal-dialog');
-
-		var closeButton = $('<button>',{
-				'class': 'modalCloseButton',
-				'title': thisObj.closeButtonLabel,
-				'aria-label': thisObj.closeButtonLabel
-		}).text('×');
-		closeButton.on( 'keydown', function (e) {
-			if (e.key === ' ') {
-				thisObj.hide();
-			}
-		}).on( 'click', function () {
+	var closeButton = document.createElement('button');
+	closeButton.className = 'modalCloseButton';
+	closeButton.setAttribute('title', this.closeButtonLabel);
+	closeButton.setAttribute('aria-label', this.closeButtonLabel);
+	closeButton.textContent = '×';
+	closeButton.addEventListener('keydown', function (e) {
+		if (e.key === ' ') {
 			thisObj.hide();
-		});
-
-		var titleH1 = $('<h1></h1>');
-		titleH1.attr('id', 'modalTitle-' + this.baseId);
-		titleH1.text(title);
-		this.titleH1 = titleH1;
-
-		modal.attr({
-			'aria-labelledby': 'modalTitle-' + this.baseId,
-		});
-		var modalHeader = $( '<div>', {
-			'class': 'able-modal-header'
-		});
-		modalHeader.prepend(titleH1);
-		modalHeader.prepend(closeButton);
-		modal.prepend(modalHeader);
-
-		modal.attr({
-			'aria-hidden': 'true',
-			'role': 'dialog',
-			'aria-modal': 'true'
-		});
-
-		modal.on( 'keydown', function (e) {
-			if (e.key === 'Escape') {
-				thisObj.hide();
-				e.preventDefault();
-			} else if (e.key === 'Tab') {
-				// Manually loop tab navigation inside the modal.
-				var parts = modal.find('*');
-				var focusable = parts.filter(focusableElementsSelector).filter(':visible');
-
-				if (focusable.length === 0) {
-					return;
-				}
-
-				var focused = $(':focus');
-				var currentIndex = focusable.index(focused);
-				if (e.shiftKey) {
-					// If backwards from first element, go to last.
-					if (currentIndex === 0) {
-						focusable.get(focusable.length - 1).trigger('focus');
-						e.preventDefault();
-					}
-				} else {
-					if (currentIndex === focusable.length - 1) {
-						focusable.get(0).trigger('focus');
-						e.preventDefault();
-					}
-				}
-			}
-			e.stopPropagation();
-		});
-
-		if ( $( 'body' ).hasClass( 'able-modal-active' ) ) {
-			$( 'body > *') .not('.able-modal-overlay').not('.able-modal-dialog').removeAttr('inert');
-			$( 'body' ).removeClass( 'able-modal-active' );
 		}
-	};
+	});
+	closeButton.addEventListener('click', function () {
+		thisObj.hide();
+	});
 
-	AccessibleDialog.prototype.show = function () {
-		if (!this.overlay) {
-			// Generate overlay.
-			var overlay = $('<div></div>').attr({
-				 'class': 'able-modal-overlay',
-				 'tabindex': '-1'
-			});
-			this.overlay = overlay;
-			$('body').append(overlay);
+	var titleH1 = document.createElement('h1');
+	titleH1.setAttribute('id', 'modalTitle-' + this.baseId);
+	titleH1.textContent = title;
+	this.titleH1 = titleH1;
 
-			// Keep from moving focus out of dialog when clicking outside of it.
-			overlay.on('mousedown.accessibleModal', function (e) {
-				e.preventDefault();
-				thisObj.hide();
-			});
+	modal.setAttribute('aria-labelledby', 'modalTitle-' + this.baseId);
+
+	var modalHeader = document.createElement('div');
+	modalHeader.className = 'able-modal-header';
+	// Preserve original DOM order: close button first, then the title heading.
+	modalHeader.append(closeButton);
+	modalHeader.append(titleH1);
+	modal.prepend(modalHeader);
+
+	modal.setAttribute('role', 'dialog');
+	modal.setAttribute('aria-modal', 'true');
+
+	// Escape fires the native 'cancel' event; route through hide() for any cleanup.
+	modal.addEventListener('cancel', function (e) {
+		e.preventDefault();
+		thisObj.hide();
+	});
+
+	// Light dismiss: a click on the backdrop (the dialog element itself) closes.
+	modal.addEventListener('click', function (e) {
+		if (e.target === modal) {
+			thisObj.hide();
 		}
+	});
+}
 
-		$('body > *').not('.able-modal-overlay').not('.able-modal-dialog').attr('inert', true);
-		$( 'body' ).addClass( 'able-modal-active' );
-
-		this.overlay.css('display', 'block');
-		this.modal.css('display', 'block');
-		this.modal.attr({
-			'aria-hidden': 'false',
-			'tabindex': '-1'
-		});
-
-		var focusable = this.modal.find("*").filter(focusableElementsSelector).filter(':visible');
-		if (focusable.length === 0) {
-			this.focusedElementBeforeModal.blur();
+AccessibleDialog.prototype.show = function () {
+	var thisObj = this;
+	if (typeof this.modal.showModal === 'function') {
+		this.modal.showModal();
+	} else {
+		// Fallback for environments without <dialog> support
+		this.modal.setAttribute('open', '');
+		this.modal.style.display = 'block';
+	}
+	// Native <dialog> focuses the first focusable element automatically; be explicit
+	// about the close button to match the previous behavior.
+	setTimeout(function () {
+		var btn = thisObj.modal.querySelector('button.modalCloseButton');
+		if (btn) {
+			btn.focus();
 		}
-		var thisObj = this;
-		setTimeout(function () {
-			// set focus on the first focusable element
-			thisObj.modal.find('button.modalCloseButton').first().trigger('focus');
-		}, 300);
-	};
+	}, 300);
+};
 
-	AccessibleDialog.prototype.hide = function () {
-		if (this.overlay) {
-			this.overlay.css('display', 'none');
-		}
-		this.modal.css('display', 'none');
-		this.modal.attr('aria-hidden', 'true');
-		$('body > *').not('.able-modal-overlay').not('.able-modal-dialog').removeAttr('inert');
-		$( 'body' ).removeClass( 'able-modal-active' );
+AccessibleDialog.prototype.hide = function () {
+	if (typeof this.modal.close === 'function') {
+		this.modal.close();
+	} else {
+		this.modal.removeAttribute('open');
+		this.modal.style.display = 'none';
+	}
+	// Native <dialog> restores focus automatically, but be explicit for the
+	// designated return element (and for non-supporting browsers).
+	var returnEl = this.focusedElementBeforeModal;
+	if (returnEl && returnEl.jquery) {
+		returnEl = returnEl[0];
+	}
+	if (returnEl && typeof returnEl.focus === 'function') {
+		returnEl.focus();
+	}
+};
 
-		this.focusedElementBeforeModal.trigger('focus');
-	};
-
-	AccessibleDialog.prototype.getInputs = function () {
-
-		// return an array of input elements within this dialog
-		if (this.modal) {
-			var inputs = this.modal.find('input');
-			return inputs;
-		}
-		return false;
-	};
+AccessibleDialog.prototype.getInputs = function () {
+	// return a NodeList of input elements within this dialog
+	if (this.modal) {
+		return this.modal.querySelectorAll('input');
+	}
+	return false;
+};
 
 export default AccessibleDialog;

@@ -1,5 +1,3 @@
-import $ from 'jquery';
-
  function addWebvttFunctions(AblePlayer) {
 	// See section 4.1 of dev.w3.org/html5/webvtt for format details.
 	AblePlayer.prototype.parseWebVTT = function(data) {
@@ -275,7 +273,7 @@ import $ from 'jquery';
 				token.type = token.tagName;
 				// Define token.parent; added by Terrill to fix bug end 'endTag' loop
 				token.parent = current;
-				if ($.inArray(token.tagName, ['i', 'b', 'u', 'ruby']) !== -1) {
+				if (['i', 'b', 'u', 'ruby'].indexOf(token.tagName) !== -1) {
 					if (languageStack.length > 0) {
 						current.language = languageStack[languageStack.length - 1];
 					}
@@ -310,7 +308,7 @@ import $ from 'jquery';
 					current = token;
 				}
 			} else if (token.type === 'endTag') {
-				if (token.tagName === current.type && $.inArray(token.tagName, ['c', 'i', 'b', 'u', 'ruby', 'rt', 'v']) !== -1) {
+				if (token.tagName === current.type && ['c', 'i', 'b', 'u', 'ruby', 'rt', 'v'].indexOf(token.tagName) !== -1) {
 					// NOTE from Terrill: This was resulting in an error because current.parent was undefined
 					// Fixed (I think) by assigning current token to token.parent in 'startTag' loop
 					current = current.parent;

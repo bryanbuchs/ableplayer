@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import ca from '../translations/ca.json';
 import cs from '../translations/cs.json';
 import da from '../translations/da.json';
@@ -134,10 +133,10 @@ function addTranslationFunctions(AblePlayer) {
 
 		if (!this.lang) {
 			// try the language of the web page, if specified
-			if ($('body').attr('lang')) {
-				docLang = $('body').attr('lang').toLowerCase();
-			} else if ($('html').attr('lang')) {
-				docLang = $('html').attr('lang').toLowerCase();
+			if (document.body.getAttribute('lang')) {
+				docLang = document.body.getAttribute('lang').toLowerCase();
+			} else if (document.documentElement.getAttribute('lang')) {
+				docLang = document.documentElement.getAttribute('lang').toLowerCase();
 			} else {
 				docLang = null;
 			}

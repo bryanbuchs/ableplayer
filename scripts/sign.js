@@ -1,22 +1,21 @@
 /* global YT */
-import $ from 'jquery';
 import DOMPurify from 'dompurify';
 
 function addSignFunctions(AblePlayer) {
 	AblePlayer.prototype.initSignLanguage = function() {
 		this.hasSignLanguage = false;
 		// Sign language is only currently supported in HTML5 player and YouTube.
-		var hasLocalSrc = ( this.$sources.first().attr('data-sign-src') !== undefined && this.$sources.first().attr('data-sign-src') !== "" );
+		var hasLocalSrc = ( this.sources[0].getAttribute('data-sign-src') !== null && this.sources[0].getAttribute('data-sign-src') !== "" );
 		// YouTube src can either be on a `source` element or on the `video` element.
-		var hasRemoteSrc = ( this.$media.data('youtube-sign-src') !== undefined && this.$media.data('youtube-sign-src') !== "" );
-		var hasRemoteSource = ( this.$sources.first().attr('data-youtube-sign-src') !== undefined && this.$sources.first().attr('data-youtube-sign-src') !== '' );
+		var hasRemoteSrc = ( this.getData(this.media, 'youtube-sign-src') !== undefined && this.getData(this.media, 'youtube-sign-src') !== "" );
+		var hasRemoteSource = ( this.sources[0].getAttribute('data-youtube-sign-src') !== null && this.sources[0].getAttribute('data-youtube-sign-src') !== '' );
 		if ( ! this.isIOS() && ( hasLocalSrc || hasRemoteSrc || hasRemoteSource ) && ( this.player === 'html5' || this.player === 'youtube' ) ) {
 			// check to see if there's a sign language video accompanying this video
 			// check only the first source
 			// If sign language is provided, it must be provided for all sources
-			let ytSignSrc = this.youTubeSignId ?? DOMPurify.sanitize( this.$sources.first().attr('data-youtube-sign-src') );
-			let signSrc = DOMPurify.sanitize( this.$sources.first().attr('data-sign-src') );
-			let signVideo = DOMPurify.sanitize( this.$media.data('youtube-sign-src') );
+			let ytSignSrc = this.youTubeSignId ?? DOMPurify.sanitize( this.sources[0].getAttribute('data-youtube-sign-src') );
+			let signSrc = DOMPurify.sanitize( this.sources[0].getAttribute('data-sign-src') );
+			let signVideo = DOMPurify.sanitize( this.getData(this.media, 'youtube-sign-src') );
 			this.signFile = (hasLocalSrc ) ? signSrc : false;
 			if ( hasRemoteSrc ) {
 				this.signYoutubeId = signVideo;
@@ -44,54 +43,53 @@ function addSignFunctions(AblePlayer) {
 	AblePlayer.prototype.injectSignPlayerCode = function() {
 
 		// create and inject surrounding HTML structure
-		var signVideoId, i, signSrc, srcType, $signSource;
+		var signVideoId, i, signSrc, srcType, signSource;
 
 		signVideoId = this.mediaId + '-sign';
 
 		if ( this.signFile || this.signYoutubeId ) {
-			if ( null !== this.$signDivLocation ) {
-				this.$signDivLocation.addClass( 'able-sign-window able-fixed' );
-				this.$signWindow = this.$signDivLocation;
+			if ( null !== this.signDivLocation ) {
+				this.signDivLocation.classList.add( 'able-sign-window', 'able-fixed' );
+				this.signWindow = this.signDivLocation;
 			} else {
-				this.$signWindow = $('<div>',{
+				this.signWindow = this.createEl('div', {
 					'class' : 'able-sign-window',
 					'role': 'dialog',
 					'aria-label': this.translate( 'sign', 'Sign language' )
 				});
-				this.$signToolbar = $('<div>',{
+				this.signToolbar = this.createEl('div', {
 					'class': 'able-window-toolbar able-' + this.toolbarIconColor + '-controls'
 				});
-				this.$signWindow.append(this.$signToolbar);
+				this.signWindow.append(this.signToolbar);
 			}
 
-			this.$ableWrapper.append(this.$signWindow);
+			this.ableWrapper.append(this.signWindow);
 		}
 
 		if ( this.signFile ) {
-			this.$signVideo = $('<video>',{
+			this.signVideo = this.createEl('video', {
 				'id' : signVideoId,
 				'tabindex' : '-1',
 				'muted' : true,
 			});
-			this.signVideo = this.$signVideo[0];
 
 			if ( this.signFile ) {
-				$signSource = $('<source>',{
+				signSource = this.createEl('source', {
 					'src' : this.signFile,
 					'type' : 'video/' + this.signFile.substr(-3)
 				});
-				this.$signVideo.append($signSource);
+				this.signVideo.append(signSource);
 			} else {
 				// for each original <source>, add a <source> to the sign <video>
-				for (i=0; i < this.$sources.length; i++) {
-					signSrc = DOMPurify.sanitize( this.$sources[i].getAttribute('data-sign-src') );
-					srcType = this.$sources[i].getAttribute('type');
+				for (i=0; i < this.sources.length; i++) {
+					signSrc = DOMPurify.sanitize( this.sources[i].getAttribute('data-sign-src') );
+					srcType = this.sources[i].getAttribute('type');
 					if (signSrc) {
-						$signSource = $('<source>',{
+						signSource = this.createEl('source', {
 							'src' : signSrc,
 							'type' : srcType
 						});
-						this.$signVideo.append($signSource);
+						this.signVideo.append(signSource);
 					} else {
 						// source is missing a sign language version
 						// can't include sign language
@@ -100,23 +98,23 @@ function addSignFunctions(AblePlayer) {
 					}
 				}
 			}
-			this.$signWindow.append( this.$signVideo );
+			this.signWindow.append( this.signVideo );
 		} else if ( this.signYoutubeId ) {
 			this.signYoutube = this.initYouTubeSignPlayer();
 		}
 
 		// make it draggable
-		if ( null === this.$signDivLocation ) {
+		if ( null === this.signDivLocation ) {
 			this.initDragDrop('sign');
 		}
 
 		if (this.prefSign === 1) {
 			// sign window is on. Go ahead and position it and show it
-			if ( null === this.$signDivLocation ) {
+			if ( null === this.signDivLocation ) {
 				this.positionDraggableWindow('sign',this.getDefaultWidth('sign'));
 			}
 		} else {
-			this.$signWindow.hide();
+			this.signWindow.style.display = 'none';
 		}
 	};
 
@@ -144,7 +142,7 @@ function addSignFunctions(AblePlayer) {
 			}
 
 			// Otherwise, keeping waiting for script load event...
-			$('body').on('youTubeIframeAPIReady', function () {
+			document.body.addEventListener('youTubeIframeAPIReady', function () {
 				thisObj.finalizeYoutubeSignInit().then(function() {
 					deferred.resolve();
 				});
@@ -156,14 +154,15 @@ function addSignFunctions(AblePlayer) {
 	AblePlayer.prototype.finalizeYoutubeSignInit = function () {
 
 		// This is called once we're sure the Youtube iFrame API is loaded -- see above
-		var deferred, promise, thisObj, containerId, autoplay;
+		var deferred, promise, thisObj, containerId, autoplay, signContainer;
 
 		deferred = new this.defer();
 		promise = deferred.promise();
 		thisObj = this;
 		containerId = this.mediaId + '_youtube_sign';
 
-		this.$signWindow.append($('<div>').attr('id', containerId));
+		signContainer = this.createEl('div', { 'id': containerId });
+		this.signWindow.append(signContainer);
 		autoplay = (this.okToPlay) ? 1 : 0;
 
 		// Documentation https://developers.google.com/youtube/player_parameters

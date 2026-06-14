@@ -1,5 +1,4 @@
 /* global Vimeo */
-import $ from 'jquery';
 
 function addVimeoFunctions(AblePlayer) {
 
@@ -14,7 +13,7 @@ function addVimeoFunctions(AblePlayer) {
 		containerId = this.mediaId + '_vimeo';
 
 		// add container to which Vimeo player iframe will be appended
-		this.$mediaContainer.prepend($('<div>').attr('id', containerId));
+		this.mediaContainer.prepend(this.createEl('div', { id: containerId }));
 
 		// if a described version is available && user prefers description
 		// init player using the described version
@@ -66,10 +65,14 @@ function addVimeoFunctions(AblePlayer) {
 
 		this.vimeoPlayer.ready().then(function() {
 			// add tabindex -1 on iframe so vimeo frame cannot be focused on
-			$('#'+containerId).children('iframe').attr({
-				'tabindex': '-1',
-				'aria-hidden': true
-			});
+			var vimeoContainer = document.getElementById(containerId);
+			var vimeoIframe = vimeoContainer ? Array.from(vimeoContainer.children).find(function (child) {
+				return child.matches('iframe');
+			}) : null;
+			if (vimeoIframe) {
+				vimeoIframe.setAttribute('tabindex', '-1');
+				vimeoIframe.setAttribute('aria-hidden', true);
+			}
 
 			// get video's intrinsic size and initiate player dimensions
 			thisObj.vimeoPlayer.getVideoWidth().then(function(width) {
@@ -89,7 +92,7 @@ function addVimeoFunctions(AblePlayer) {
 			if (!thisObj.hasPlaylist) {
 				// remove the media element, since Vimeo replaces that with its own element in an iframe
 				// this is handled differently for playlists. See buildplayer.js > cuePlaylistItem()
-				thisObj.$media.remove();
+				thisObj.media.remove();
 
 				// define variables that will impact player setup
 
@@ -161,7 +164,7 @@ function addVimeoFunctions(AblePlayer) {
 		gettingEndedPromise.then(function (ended) {
 			deferred.resolve(ended);
 		});
-		$.when.apply($, promises).then(function () {
+		Promise.all(promises).then(function () {
 			deferred.resolve();
 		});
 		return promise;

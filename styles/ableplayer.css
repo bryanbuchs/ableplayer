@@ -566,14 +566,13 @@ div.able-video div.able-now-playing {
 	display: none;
 }
 
-/* Modal Dialogs */
-div.able-modal-dialog {
+/* Modal Dialogs (native <dialog> element) */
+dialog.able-modal-dialog {
 	position: fixed;
-	display: none;
 	z-index: 10000;
 	max-height: 90%;
 	overflow: auto;
-	transform: translate(-50%,-50%) !important;
+	transform: translate(-50%,-50%);
 	top: 50%;
 	left: 50%;
 	outline: 0px none;
@@ -586,27 +585,15 @@ div.able-modal-dialog {
 	box-sizing: border-box;
 }
 
+/* The native dialog backdrop replaces the former overlay <div> */
+dialog.able-modal-dialog::backdrop {
+	background-color: var(--able-modal-overlay);
+}
+
 @media screen and ( width < 800px ) {
-	div.able-modal-dialog {
+	dialog.able-modal-dialog {
 		min-width: 95%;
 	}
-}
-
-body.able-modal-active {
-	overflow: hidden;
-}
-
-div.able-modal-overlay {
-	position: fixed;
-	width: 100%;
-	height: 100%;
-	background-color: var(--able-modal-overlay);
-	margin: 0;
-	padding: 0;
-	top: 0;
-	left: 0;
-	display: none;
-	z-index: 9500;
 }
 
 .able-alert button,
@@ -638,7 +625,7 @@ div.able-modal-overlay {
 	align-self: flex-start;
 }
 
-div.able-modal-dialog h1 {
+.able-modal-dialog h1 {
 	font-size: 1.5rem;
 	line-height: 1.6;
 	margin: 0 0 .5rem;

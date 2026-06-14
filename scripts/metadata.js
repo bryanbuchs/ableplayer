@@ -1,10 +1,8 @@
-import $ from 'jquery';
-
 function addMetadataFunctions(AblePlayer) {
   AblePlayer.prototype.updateMeta = function (time) {
     if (this.hasMeta) {
       if (this.metaType === "text") {
-        this.$metaDiv.show();
+        this.metaDivEl.style.display = '';
         this.showMeta(time || this.elapsed);
       } else {
         this.showMeta(time || this.elapsed);
@@ -40,9 +38,8 @@ function addMetadataFunctions(AblePlayer) {
       if (this.currentMeta !== thisMeta) {
         if (this.metaType === "text") {
           // it's time to load the new metadata cue into the container div
-          this.$metaDiv.html(
-            this.flattenCueForMeta(cues[thisMeta]).replace(/\n/g, "<br>")
-          );
+          this.metaDivEl.innerHTML =
+            this.flattenCueForMeta(cues[thisMeta]).replace(/\n/g, "<br>");
         } else if (this.metaType === "selector") {
           // it's time to show content referenced by the designated selector(s)
           cueText = this.flattenCueForMeta(cues[thisMeta]);
@@ -55,26 +52,26 @@ function addMetadataFunctions(AblePlayer) {
               this.pauseMedia();
             } else if (line.toLowerCase().substring(0, 6) == "focus:") {
               focusTarget = line.substring(6).trim();
-              if ($(focusTarget).length) {
-                $(focusTarget).trigger('focus');
+              if (document.querySelector(focusTarget)) {
+                document.querySelector(focusTarget).focus();
               }
             } else {
-              if ($(line).length) {
+              if (document.querySelector(line)) {
                 // selector exists
                 this.currentMeta = thisMeta;
-                showDuration = parseInt($(line).attr("data-duration"));
+                showDuration = parseInt(document.querySelector(line).getAttribute("data-duration"));
                 if (
                   typeof showDuration !== "undefined" &&
                   !isNaN(showDuration)
                 ) {
-					$(line).show();
+					this.showMetaSelector(line);
 					const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 					delay(showDuration).then(() => {
-						$(line).hide();
+						this.hideMetaSelector(line);
 					});
                 } else {
                   // no duration specified. Just show the element until end time specified in VTT file
-                  $(line).show();
+                  this.showMetaSelector(line);
                 }
                 // add to array of visible selectors so it can be hidden at end time
                 this.visibleSelectors.push(line);
@@ -86,8 +83,8 @@ function addMetadataFunctions(AblePlayer) {
           if (this.visibleSelectors && this.visibleSelectors.length) {
             if (this.visibleSelectors.length !== tempSelectors.length) {
               for (i = this.visibleSelectors.length - 1; i >= 0; i--) {
-                if ($.inArray(this.visibleSelectors[i], tempSelectors) == -1) {
-                  $(this.visibleSelectors[i]).hide();
+                if (tempSelectors.indexOf(this.visibleSelectors[i]) == -1) {
+                  this.hideMetaSelector(this.visibleSelectors[i]);
                   this.visibleSelectors.splice(i, 1);
                 }
               }
@@ -97,18 +94,32 @@ function addMetadataFunctions(AblePlayer) {
       }
     } else {
       // there is currently no metadata. Empty stale content
-      if (typeof this.$metaDiv !== "undefined") {
-        this.$metaDiv.html("");
+      if (typeof this.metaDivEl !== "undefined" && this.metaDivEl !== null) {
+        this.metaDivEl.innerHTML = "";
       }
       if (this.visibleSelectors && this.visibleSelectors.length) {
         for (i = 0; i < this.visibleSelectors.length; i++) {
-          $(this.visibleSelectors[i]).hide();
+          this.hideMetaSelector(this.visibleSelectors[i]);
         }
         // reset array
         this.visibleSelectors = [];
       }
       this.currentMeta = -1;
     }
+  };
+
+  // Show/hide all elements matching an author-supplied CSS selector.
+  // (jQuery's .show()/.hide() operated on every matching element.)
+  AblePlayer.prototype.showMetaSelector = function (selector) {
+    document.querySelectorAll(selector).forEach(function (el) {
+      el.style.display = '';
+    });
+  };
+
+  AblePlayer.prototype.hideMetaSelector = function (selector) {
+    document.querySelectorAll(selector).forEach(function (el) {
+      el.style.display = 'none';
+    });
   };
 
   // Takes a cue and returns the metadata text to display for it.
