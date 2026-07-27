@@ -1080,45 +1080,57 @@
 					}
 				} else if ((prefName.indexOf('Captions') !== -1) && (prefName !== 'prefCaptions')) {
 					// this is one of the caption-related select fields
-					newValue = document.querySelector('select[id="' + prefId + '"]').value;
-					if (preferences.preferences[prefName] !== newValue) { // user changed setting
-						preferences.preferences[prefName] = newValue;
-						// also update global var for this pref (for caption fields, not done elsewhere)
-						this[prefName] = newValue;
-						numChanges++;
-						numCapChanges++;
-					}
-					if (prefName === 'prefCaptionsSize') {
-						capSizeChanged = true;
-						capSizeValue = newValue;
+					// the field may not be in the DOM (e.g., no speechSynthesis voices available)
+					var capSelectEl = document.querySelector('select[id="' + prefId + '"]');
+					if (capSelectEl) {
+						newValue = capSelectEl.value;
+						if (preferences.preferences[prefName] !== newValue) { // user changed setting
+							preferences.preferences[prefName] = newValue;
+							// also update global var for this pref (for caption fields, not done elsewhere)
+							this[prefName] = newValue;
+							numChanges++;
+							numCapChanges++;
+						}
+						if (prefName === 'prefCaptionsSize') {
+							capSizeChanged = true;
+							capSizeValue = newValue;
+						}
 					}
 				} else if ((prefName.indexOf('Desc') !== -1) && (prefName !== 'prefDescPause') && prefName !== 'prefDescVisible') {
 					// this is one of the description-related select fields
-					newValue = document.querySelector('select[id="' + prefId + '"]').value;
-					if (preferences.preferences[prefName] !== newValue) { // user changed setting
-						preferences.preferences[prefName] = newValue;
-						// also update global var for this pref
-						this[prefName] = newValue;
-						numChanges++;
-					}
-				} else { // all other fields are checkboxes
-					if (document.querySelector('input[id="' + prefId + '"]').checked) {
-						preferences.preferences[prefName] = 1;
-						if (this[prefName] === 1) {
-							// nothing has changed
-						} else {
-							// user has just turned this pref on
-							this[prefName] = 1;
+					// the field may not be in the DOM (e.g., no speechSynthesis support)
+					var descSelectEl = document.querySelector('select[id="' + prefId + '"]');
+					if (descSelectEl) {
+						newValue = descSelectEl.value;
+						if (preferences.preferences[prefName] !== newValue) { // user changed setting
+							preferences.preferences[prefName] = newValue;
+							// also update global var for this pref
+							this[prefName] = newValue;
 							numChanges++;
 						}
-					} else { // thisPref is not checked
-						preferences.preferences[prefName] = 0;
-						if (this[prefName] === 1) {
-							// user has just turned this pref off
-							this[prefName] = 0;
-							numChanges++;
-						} else {
-							// nothing has chaged
+					}
+				} else { // all other fields are checkboxes
+					// the field may not be in the DOM (e.g., transcript prefs with YouTube captions)
+					var checkboxEl = document.querySelector('input[id="' + prefId + '"]');
+					if (checkboxEl) {
+						if (checkboxEl.checked) {
+							preferences.preferences[prefName] = 1;
+							if (this[prefName] === 1) {
+								// nothing has changed
+							} else {
+								// user has just turned this pref on
+								this[prefName] = 1;
+								numChanges++;
+							}
+						} else { // thisPref is not checked
+							preferences.preferences[prefName] = 0;
+							if (this[prefName] === 1) {
+								// user has just turned this pref off
+								this[prefName] = 0;
+								numChanges++;
+							} else {
+								// nothing has chaged
+							}
 						}
 					}
 				}

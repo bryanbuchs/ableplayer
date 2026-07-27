@@ -2924,7 +2924,7 @@
 
   		// Put everything together.
   		this.statusBarDiv.append(this.timer, this.speed, this.status);
-  		if (this.showNowPlaying) {
+  		if (this.nowPlayingDiv) {
   			this.playerDiv.append(this.nowPlayingDiv, this.controllerDiv, this.statusBarDiv);
   		} else {
   			this.playerDiv.append(this.controllerDiv, this.statusBarDiv);
@@ -4825,12 +4825,14 @@
             property = "opacity";
           }
           prefInput = document.getElementById(this.mediaId + "_" + pref);
-          if (pref === "prefCaptionsOpacity") {
-            newValue = parseFloat(prefInput.value) / 100.0;
-          } else {
-            newValue = prefInput.value;
+          if (prefInput) {
+            if (pref === "prefCaptionsOpacity") {
+              newValue = parseFloat(prefInput.value) / 100.0;
+            } else {
+              newValue = prefInput.value;
+            }
+            element.style[property] = newValue;
           }
-          element.style[property] = newValue;
         } else {
           // no property was specified, update all styles with current saved prefs
           opacity = parseFloat(this.prefCaptionsOpacity) / 100.0;
@@ -5901,7 +5903,10 @@
   								thisObj.refreshControls(context);
   							}, thisObj.statusMessageThreshold);
   						} else if ((timestamp - thisObj.statusDebounceStart) > thisObj.statusMessageThreshold) {
-  							thisObj.status.textContent = textByState[currentState];
+  							// currentState may have no matching text (e.g., unrecognized player state)
+  							if (typeof textByState[currentState] !== 'undefined') {
+  								thisObj.status.textContent = textByState[currentState];
+  							}
   							thisObj.statusDebounceStart = null;
   							clearTimeout(thisObj.statusTimeout);
   							thisObj.statusTimeout = null;
@@ -7519,17 +7524,25 @@
   		}
 
   		if (context === 'sample') {
-  			// get settings from form
-  			voiceName = document.getElementById(this.mediaId + '_prefDescVoice').value;
-  			pitch = document.getElementById(this.mediaId + '_prefDescPitch').value;
-  			rate = document.getElementById(this.mediaId + '_prefDescRate').value;
-  			volume = document.getElementById(this.mediaId + '_prefDescVolume').value;
+  			// get settings from form; fields may not be in the DOM (e.g., no speechSynthesis support)
+  			var descVoiceEl = document.getElementById(this.mediaId + '_prefDescVoice');
+  			var descPitchEl = document.getElementById(this.mediaId + '_prefDescPitch');
+  			var descRateEl = document.getElementById(this.mediaId + '_prefDescRate');
+  			var descVolumeEl = document.getElementById(this.mediaId + '_prefDescVolume');
+  			voiceName = descVoiceEl ? descVoiceEl.value : this.prefDescVoice;
+  			pitch = descPitchEl ? descPitchEl.value : this.prefDescPitch;
+  			rate = descRateEl ? descRateEl.value : this.prefDescRate;
+  			volume = descVolumeEl ? descVolumeEl.value : this.prefDescVolume;
   		} else if ( context === 'captionSample' ) {
-  			// get settings from form
-  			voiceName = document.getElementById(this.mediaId + '_prefCaptionsVoice').value;
-  			pitch = document.getElementById(this.mediaId + '_prefCaptionsPitch').value;
-  			rate = document.getElementById(this.mediaId + '_prefCaptionsRate').value;
-  			volume = document.getElementById(this.mediaId + '_prefCaptionsVolume').value;
+  			// get settings from form; fields may not be in the DOM (e.g., no speechSynthesis support)
+  			var capVoiceEl = document.getElementById(this.mediaId + '_prefCaptionsVoice');
+  			var capPitchEl = document.getElementById(this.mediaId + '_prefCaptionsPitch');
+  			var capRateEl = document.getElementById(this.mediaId + '_prefCaptionsRate');
+  			var capVolumeEl = document.getElementById(this.mediaId + '_prefCaptionsVolume');
+  			voiceName = capVoiceEl ? capVoiceEl.value : this.prefCaptionsVoice;
+  			pitch = capPitchEl ? capPitchEl.value : this.prefCaptionsPitch;
+  			rate = capRateEl ? capRateEl.value : this.prefCaptionsRate;
+  			volume = capVolumeEl ? capVolumeEl.value : this.prefCaptionsVolume;
   		} else if ( context === 'description' ) {
   			// get settings from global prefs
   			voiceName = this.prefDescVoice;
@@ -12561,41 +12574,53 @@
   					}
   				} else if ((prefName.indexOf('Captions') !== -1) && (prefName !== 'prefCaptions')) {
   					// this is one of the caption-related select fields
-  					newValue = document.querySelector('select[id="' + prefId + '"]').value;
-  					if (preferences.preferences[prefName] !== newValue) { // user changed setting
-  						preferences.preferences[prefName] = newValue;
-  						// also update global var for this pref (for caption fields, not done elsewhere)
-  						this[prefName] = newValue;
-  						numChanges++;
-  						numCapChanges++;
-  					}
-  					if (prefName === 'prefCaptionsSize') {
-  						capSizeChanged = true;
-  						capSizeValue = newValue;
+  					// the field may not be in the DOM (e.g., no speechSynthesis voices available)
+  					var capSelectEl = document.querySelector('select[id="' + prefId + '"]');
+  					if (capSelectEl) {
+  						newValue = capSelectEl.value;
+  						if (preferences.preferences[prefName] !== newValue) { // user changed setting
+  							preferences.preferences[prefName] = newValue;
+  							// also update global var for this pref (for caption fields, not done elsewhere)
+  							this[prefName] = newValue;
+  							numChanges++;
+  							numCapChanges++;
+  						}
+  						if (prefName === 'prefCaptionsSize') {
+  							capSizeChanged = true;
+  							capSizeValue = newValue;
+  						}
   					}
   				} else if ((prefName.indexOf('Desc') !== -1) && (prefName !== 'prefDescPause') && prefName !== 'prefDescVisible') {
   					// this is one of the description-related select fields
-  					newValue = document.querySelector('select[id="' + prefId + '"]').value;
-  					if (preferences.preferences[prefName] !== newValue) { // user changed setting
-  						preferences.preferences[prefName] = newValue;
-  						// also update global var for this pref
-  						this[prefName] = newValue;
-  						numChanges++;
-  					}
-  				} else { // all other fields are checkboxes
-  					if (document.querySelector('input[id="' + prefId + '"]').checked) {
-  						preferences.preferences[prefName] = 1;
-  						if (this[prefName] === 1) ; else {
-  							// user has just turned this pref on
-  							this[prefName] = 1;
+  					// the field may not be in the DOM (e.g., no speechSynthesis support)
+  					var descSelectEl = document.querySelector('select[id="' + prefId + '"]');
+  					if (descSelectEl) {
+  						newValue = descSelectEl.value;
+  						if (preferences.preferences[prefName] !== newValue) { // user changed setting
+  							preferences.preferences[prefName] = newValue;
+  							// also update global var for this pref
+  							this[prefName] = newValue;
   							numChanges++;
   						}
-  					} else { // thisPref is not checked
-  						preferences.preferences[prefName] = 0;
-  						if (this[prefName] === 1) {
-  							// user has just turned this pref off
-  							this[prefName] = 0;
-  							numChanges++;
+  					}
+  				} else { // all other fields are checkboxes
+  					// the field may not be in the DOM (e.g., transcript prefs with YouTube captions)
+  					var checkboxEl = document.querySelector('input[id="' + prefId + '"]');
+  					if (checkboxEl) {
+  						if (checkboxEl.checked) {
+  							preferences.preferences[prefName] = 1;
+  							if (this[prefName] === 1) ; else {
+  								// user has just turned this pref on
+  								this[prefName] = 1;
+  								numChanges++;
+  							}
+  						} else { // thisPref is not checked
+  							preferences.preferences[prefName] = 0;
+  							if (this[prefName] === 1) {
+  								// user has just turned this pref off
+  								this[prefName] = 0;
+  								numChanges++;
+  							}
   						}
   					}
   				}

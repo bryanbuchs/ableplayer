@@ -197,7 +197,7 @@ function addBuildplayerFunctions(AblePlayer) {
 
 		// Put everything together.
 		this.statusBarDiv.append(this.timer, this.speed, this.status);
-		if (this.showNowPlaying) {
+		if (this.nowPlayingDiv) {
 			this.playerDiv.append(this.nowPlayingDiv, this.controllerDiv, this.statusBarDiv);
 		} else {
 			this.playerDiv.append(this.controllerDiv, this.statusBarDiv);

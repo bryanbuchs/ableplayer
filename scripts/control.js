@@ -716,7 +716,10 @@ function addControlFunctions(AblePlayer) {
 								thisObj.refreshControls(context);
 							}, thisObj.statusMessageThreshold);
 						} else if ((timestamp - thisObj.statusDebounceStart) > thisObj.statusMessageThreshold) {
-							thisObj.status.textContent = textByState[currentState];
+							// currentState may have no matching text (e.g., unrecognized player state)
+							if (typeof textByState[currentState] !== 'undefined') {
+								thisObj.status.textContent = textByState[currentState];
+							}
 							thisObj.statusDebounceStart = null;
 							clearTimeout(thisObj.statusTimeout);
 							thisObj.statusTimeout = null;

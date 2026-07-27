@@ -398,12 +398,14 @@ function addCaptionFunctions(AblePlayer) {
           property = "opacity";
         }
         prefInput = document.getElementById(this.mediaId + "_" + pref);
-        if (pref === "prefCaptionsOpacity") {
-          newValue = parseFloat(prefInput.value) / 100.0;
-        } else {
-          newValue = prefInput.value;
+        if (prefInput) {
+          if (pref === "prefCaptionsOpacity") {
+            newValue = parseFloat(prefInput.value) / 100.0;
+          } else {
+            newValue = prefInput.value;
+          }
+          element.style[property] = newValue;
         }
-        element.style[property] = newValue;
       } else {
         // no property was specified, update all styles with current saved prefs
         opacity = parseFloat(this.prefCaptionsOpacity) / 100.0;

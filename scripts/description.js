@@ -583,17 +583,25 @@ function addDescriptionFunctions(AblePlayer) {
 		}
 
 		if (context === 'sample') {
-			// get settings from form
-			voiceName = document.getElementById(this.mediaId + '_prefDescVoice').value;
-			pitch = document.getElementById(this.mediaId + '_prefDescPitch').value;
-			rate = document.getElementById(this.mediaId + '_prefDescRate').value;
-			volume = document.getElementById(this.mediaId + '_prefDescVolume').value;
+			// get settings from form; fields may not be in the DOM (e.g., no speechSynthesis support)
+			var descVoiceEl = document.getElementById(this.mediaId + '_prefDescVoice');
+			var descPitchEl = document.getElementById(this.mediaId + '_prefDescPitch');
+			var descRateEl = document.getElementById(this.mediaId + '_prefDescRate');
+			var descVolumeEl = document.getElementById(this.mediaId + '_prefDescVolume');
+			voiceName = descVoiceEl ? descVoiceEl.value : this.prefDescVoice;
+			pitch = descPitchEl ? descPitchEl.value : this.prefDescPitch;
+			rate = descRateEl ? descRateEl.value : this.prefDescRate;
+			volume = descVolumeEl ? descVolumeEl.value : this.prefDescVolume;
 		} else if ( context === 'captionSample' ) {
-			// get settings from form
-			voiceName = document.getElementById(this.mediaId + '_prefCaptionsVoice').value;
-			pitch = document.getElementById(this.mediaId + '_prefCaptionsPitch').value;
-			rate = document.getElementById(this.mediaId + '_prefCaptionsRate').value;
-			volume = document.getElementById(this.mediaId + '_prefCaptionsVolume').value;
+			// get settings from form; fields may not be in the DOM (e.g., no speechSynthesis support)
+			var capVoiceEl = document.getElementById(this.mediaId + '_prefCaptionsVoice');
+			var capPitchEl = document.getElementById(this.mediaId + '_prefCaptionsPitch');
+			var capRateEl = document.getElementById(this.mediaId + '_prefCaptionsRate');
+			var capVolumeEl = document.getElementById(this.mediaId + '_prefCaptionsVolume');
+			voiceName = capVoiceEl ? capVoiceEl.value : this.prefCaptionsVoice;
+			pitch = capPitchEl ? capPitchEl.value : this.prefCaptionsPitch;
+			rate = capRateEl ? capRateEl.value : this.prefCaptionsRate;
+			volume = capVolumeEl ? capVolumeEl.value : this.prefCaptionsVolume;
 		} else if ( context === 'description' ) {
 			// get settings from global prefs
 			voiceName = this.prefDescVoice;
